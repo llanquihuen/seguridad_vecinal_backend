@@ -13,9 +13,9 @@ jobs:
         run: mvn install
       - name: Create .env file
         run: |
-          echo "HOST=${{ secrets.DB_HOST }}" > .env
-          echo "USER=${{ secrets.DB_USER }}" >> .env
-          echo "PASS=${{ secrets.DB_PASS }}" >> .env
+          echo "DATASOURCE_URL=${{ secrets.DATASOURCE_URL }}" > .env
+          echo "DATASOURCE_USERNAME=${{ secrets.DATASOURCE_USERNAME }}" >> .env
+          echo "DATASOURCE_PASSWORD=${{ secrets.DATASOURCE_PASSWORD }}" >> .env
       - name: Build with Maven
         run: mvn clean package
 
