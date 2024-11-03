@@ -42,10 +42,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Use SSH key to deploy
-        uses: shivammathur/setup-ssh@v2
+        uses: webh0sted/setup-ssh@v2
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-host: 54.159.223.118
+          ssh-port: 22
+          ssh-username: ubuntu
       - name: Deploy to Lightsail
         run: |
           scp -r target/*.jar ubuntu@54.159.223.118:/var/www/svecinal_backend/
-          ssh ubuntu@tu_ip_lightsail 'sudo systemctl restart seguridad_vecinal'
+          ssh ubuntu@54.159.223.118 "cd /var/www/html/svecinal_backend && sudo systemctl restart seguridad_vecinal"
