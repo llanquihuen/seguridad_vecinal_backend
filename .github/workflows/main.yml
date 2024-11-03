@@ -8,17 +8,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Create .env file
-        run: |
-          echo "DATASOURCE_URL=${{ secrets.DATASOURCE_URL }}" > .env
-          echo "DATASOURCE_USERNAME=${{ secrets.DATASOURCE_USERNAME }}" >> .env
-          echo "DATASOURCE_PASSWORD=${{ secrets.DATASOURCE_PASSWORD }}" >> .env
       - uses: actions/checkout@v3
+
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Create .env file
+        run: |
+          echo "DATASOURCE_URL=${{ secrets.DATASOURCE_URL }}" > .env
+          echo "DATASOURCE_USERNAME=${{ secrets.DATASOURCE_USERNAME }}" >> .env
+          echo "DATASOURCE_PASSWORD=${{ secrets.DATASOURCE_PASSWORD }}" >> .env
+
+      - name: Verify .env file
+        run: |
+          if [ -f ".env" ]; then
+            echo ".env file exists"
+            ls -la .env
+          else
+            echo ".env file not found"
+            exit 1
+          fi
       - name: Install dependencies
         run: mvn install
       - name: Build with Maven
