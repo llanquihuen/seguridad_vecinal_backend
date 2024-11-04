@@ -35,7 +35,12 @@ jobs:
         run: mvn install
       - name: Build with Maven
         run: mvn clean package
-
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
       - name: List contents of directory
         run: |
             ls -laR
