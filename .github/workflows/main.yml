@@ -55,6 +55,7 @@ jobs:
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /var/www/svecinal_backend"
           
           # Copiar archivos al servidor
+          ls
           scp target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/app.jar
           scp .env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
           
