@@ -42,15 +42,9 @@ jobs:
     environment:
       name: production
     steps:
-      - name: List contents of target directory
+      - name: List contents of directory
         run: |
-          if [ -d "target" ]; then
-            echo "Listing contents of target directory:"
-            ls -la target
-          else
-            echo "Error: target directory does not exist."
-            exit 1
-          fi
+            ls -la
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh/
