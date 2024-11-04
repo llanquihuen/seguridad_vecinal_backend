@@ -36,30 +36,87 @@ jobs:
       - name: Build with Maven
         run: mvn clean package
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-    steps:
-      - uses: actions/checkout@v3
-      - name: Transfer JAR to Lightsail Instance
-        uses: actions/scp@v3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: 22
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ./target/*.*
-          target: /var/www/svecinal_backend
-      - name: Deploy to Lightsail
-        uses: actions/ssh@v3
-        with:
-          host: ${{ secrets.LIGHTSAIL_INSTANCE_IP }}
-          port: 22
-          username: ${{ secrets.LIGHTSAIL_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /var/www/svecinal_backend
-            sudo systemctl stop seguridad_vecinal  
-            java -jar seguridad_vecinal-0.0.1.jar
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        run: |
+          # Crear directorio de la aplicación si no existe
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /var/www/svecinal_backend"
+          
+          # Copiar archivos al servidor
+          scp target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/app.jar
+          scp .env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
+          
+          # Crear script de servicio systemd si no existe
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo tee /etc/systemd/system/svecinalapp.service << EOF
+          [Unit]
+          Description=Seguridad Vecinal
+          After=network.target
+          
+          [Service]
+          User=${{ secrets.SSH_USER }}
+          WorkingDirectory=/home/${{ secrets.SSH_USER }}/app
+          ExecStart=/usr/bin/java -jar app.jar
+          SuccessExitStatus=143
+          TimeoutStopSec=10
+          Restart=on-failure
+          RestartSec=5
+          
+          [Install]
+          WantedBy=multi-user.target
+          EOF"
+          
+          # Recargar systemd y reiniciar servicio
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl daemon-reload && sudo systemctl restart svecinalapp"
+#
+#  deploy:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    environment:
+#      name: production
+#    steps:
+#      - uses: actions/checkout@v3
+#      - name: Transfer JAR to Lightsail Instance
+#        uses: betanzos/scp-upload@v1
+#        with:
+#          host: ${{ secrets.SSH_HOST }}
+#          port: 22
+#          username: ${{ secrets.SSH_USER }}
+#          key: ${{ secrets.SSH_PRIVATE_KEY }}
+#          source: ./target/*.*
+#          remote_dir: /var/www/svecinal_backend
+#      - name: Deploy to Lightsail
+#        uses: actions/ssh@v3
+#        with:
+#          host: ${{ secrets.LIGHTSAIL_INSTANCE_IP }}
+#          port: 22
+#          username: ${{ secrets.LIGHTSAIL_SSH_USER }}
+#          key: ${{ secrets.SSH_PRIVATE_KEY }}
+#          script: |
+#            cd /var/www/svecinal_backend
+#            sudo systemctl stop seguridad_vecinal  # Stop the app if running
+#            java -jar seguridad_vecinal-0.0.1.jar  # Start the app
+#
+#
+#  deploy:
+#    needs: build
+#    runs-on: ubuntu-20.04
+#    steps:
+#      - uses: actions/checkout@v3
+#      - name: Use SSH key to deploy
+#        uses: webh0sted/setup-ssh@v2
+#        with:
+#          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+#          ssh-host: 54.159.223.118
+#          ssh-port: 22
+#          ssh-username: ubuntu
+#      - name: Deploy to Lightsail
+#        run: |
+#          scp -r target/*.jar ubuntu@54.159.223.118:/var/www/svecinal_backend/
+#          ssh ubuntu@54.159.223.118 "cd /var/www/html/svecinal_backend && sudo systemctl restart seguridad_vecinal"
