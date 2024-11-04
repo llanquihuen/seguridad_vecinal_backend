@@ -64,8 +64,8 @@ jobs:
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /var/www/svecinal_backend"
           
           # Copiar archivos al servidor
-          scp target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/
-          scp .env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
+          scp seguridad_vecinal_backend/target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/
+          scp seguridad_vecinal_backend/.env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
           
           # Crear script de servicio systemd si no existe
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo tee /etc/systemd/system/svecinalapp.service << EOF
