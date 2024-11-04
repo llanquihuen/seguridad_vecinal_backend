@@ -42,13 +42,21 @@ jobs:
     environment:
       name: production
     steps:
+      - name: List contents of target directory
+        run: |
+          if [ -d "target" ]; then
+            echo "Listing contents of target directory:"
+            ls -la target
+          else
+            echo "Error: target directory does not exist."
+            exit 1
+          fi
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          ls
 
       - name: Deploy to server
         run: |
@@ -56,7 +64,7 @@ jobs:
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /var/www/svecinal_backend"
           
           # Copiar archivos al servidor
-          scp target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/app.jar
+          scp target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/
           scp .env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
           
           # Crear script de servicio systemd si no existe
@@ -68,7 +76,7 @@ jobs:
           [Service]
           User=${{ secrets.SSH_USER }}
           WorkingDirectory=/home/${{ secrets.SSH_USER }}/app
-          ExecStart=/usr/bin/java -jar app.jar
+          ExecStart=/usr/bin/java -jar seguridad_vecinal-0.0.1.jar
           SuccessExitStatus=143
           TimeoutStopSec=10
           Restart=on-failure
