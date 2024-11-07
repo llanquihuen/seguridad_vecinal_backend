@@ -57,7 +57,7 @@ jobs:
           
           # Copiar archivos al servidor
           scp ${{ github.workspace }}/target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/
-          scp ${{ github.workspace }}.env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
+          scp .env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
           
           # Crear script de servicio systemd si no existe
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo tee /etc/systemd/system/svecinalapp.service << EOF
@@ -67,8 +67,8 @@ jobs:
           
           [Service]
           User=${{ secrets.SSH_USER }}
-          WorkingDirectory=/home/${{ secrets.SSH_USER }}/app
-          ExecStart=/usr/bin/java -jar seguridad_vecinal-0.0.1.jar
+          WorkingDirectory=/var/www/svecinal_backend/
+          ExecStart=/usr/bin/java -jar /var/www/svecinal_backend/seguridad_vecinal-0.0.1.jar
           SuccessExitStatus=143
           TimeoutStopSec=10
           Restart=on-failure
