@@ -6,6 +6,8 @@ import cl.seguridad.vecinal.modelo.Usuario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class UserService {
 
@@ -18,6 +20,9 @@ public class UserService {
 
     public Usuario getUser(Integer id){
         return usuarioRepository.findByUsuarioId(id);
+    }
+    public List<Usuario> getAllUsers(){
+        return usuarioRepository.findAll();
     }
 
 }
