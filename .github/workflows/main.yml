@@ -35,12 +35,7 @@ jobs:
         run: mvn install
       - name: Build with Maven
         run: mvn clean package
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-    steps:
+
       - name: List contents of directory
         run: |
             ls -laR
@@ -62,7 +57,7 @@ jobs:
           
           # Copiar archivos al servidor
           scp ${{ github.workspace }}/target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/
-          scp .env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
+          scp ${{ github.workspace }}.env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/svecinal_backend/.env
           
           # Crear script de servicio systemd si no existe
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo tee /etc/systemd/system/svecinalapp.service << EOF
