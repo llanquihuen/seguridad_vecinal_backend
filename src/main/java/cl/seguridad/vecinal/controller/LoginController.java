@@ -23,13 +23,13 @@ public class LoginController {
         return ResponseEntity.ok(savedUser);
     }
 
-    @GetMapping("/user/{id}")
-    public ResponseEntity<Usuario> getUserById(@PathVariable Integer id) {
-        Optional<Usuario> optionalUser = Optional.ofNullable(userService.getUser(id));
-
-        return optionalUser.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
+//    @GetMapping("/user/{id}")
+//    public ResponseEntity<Usuario> getUserById(@PathVariable Integer id) {
+//        Usuario optionalUser = Optional.ofNullable(userService.getUser(id));
+//
+//        return optionalUser.map(ResponseEntity::ok)
+//                .orElseGet(() -> ResponseEntity.notFound().build());
+//    }
     @GetMapping("/users")
     public ResponseEntity<List<Usuario>> getAllUsers() {
         List<Usuario> listUsers = userService.getAllUsers();

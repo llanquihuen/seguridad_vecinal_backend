@@ -20,6 +20,7 @@ public class Usuario {
 
    private String nombre;
    private String apellido;
+   @Column(unique = true)
    private String email;
    private String password;
    private boolean estadoCuenta;
@@ -29,6 +30,8 @@ public class Usuario {
    private Float longitud;
    private boolean verificado;
    private String tokenVerificacion;
+   @Enumerated(EnumType.STRING)
+   private Role role;
 
 //   @JsonManagedReference
 //   @OneToMany(mappedBy = "usuarioId", fetch = FetchType.EAGER)
