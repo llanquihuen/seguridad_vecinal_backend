@@ -19,11 +19,13 @@ public class UserService {
         return usuarioRepository.save(usuario);
     }
 
-    public Optional<Usuario> getUser(Integer id){
-        return usuarioRepository.findByUsuarioId(id);
+    public Optional<Usuario> getUserByRut(String rut){
+        return usuarioRepository.findByRut(rut);
     }
     public List<Usuario> getAllUsers(){
         return usuarioRepository.findAll();
     }
+
+    public boolean checkRut (String rut) {return usuarioRepository.existsUsuarioByRut(rut);}
 
 }

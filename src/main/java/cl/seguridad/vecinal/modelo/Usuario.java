@@ -22,6 +22,8 @@ public class Usuario {
    private String apellido;
    @Column(unique = true)
    private String email;
+   @Column(unique = true)
+   private String rut;
    private String password;
    private boolean estadoCuenta;
    private LocalDate fechaRegistro;

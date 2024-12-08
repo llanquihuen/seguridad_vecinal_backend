@@ -26,8 +26,6 @@ public class AuthService {
     public void registerUser(Usuario usuario) {
         String encodedPassword = passwordEncoder.encode(usuario.getPassword());
         usuario.setPassword(encodedPassword);
-        // Imprime el hash de la contraseña para depuración
-        //System.out.println("Contraseña cifrada: " + encodedPassword);
         usuarioRepository.save(usuario);
     }
 
