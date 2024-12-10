@@ -24,10 +24,14 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
-        if (authService.authenticate(loginRequest.getEmail(),loginRequest.getPassword())){
+        String response = authService.authenticate(loginRequest.getEmail(),loginRequest.getPassword());
+        if (response.equals("OK")){
             return ResponseEntity.ok("Login exitoso");
         }else{
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciales Incorrectas");
+            if (response.equals("NO_VERIFICADO")){
+                return ResponseEntity.status(HttpStatus.OK).body("Usuario no verificado");
+            }
+            return ResponseEntity.status(HttpStatus.OK).body("Credenciales Incorrectas");
         }
     }
 

@@ -17,10 +17,18 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public boolean authenticate(String email, String password) {
-        return usuarioRepository.findByEmail(email)
-                .map(usuario -> passwordEncoder.matches(password, usuario.getPassword()))
-                .orElse(false);
+    public String authenticate(String email, String password) {
+        Usuario usuario = usuarioRepository.findByEmail(email).get();
+            if (passwordEncoder.matches(password, usuario.getPassword())){
+                if (usuario.isVerificado()){
+                    return "OK";
+                }else{
+                    return "NO_VERIFICADO";
+                }
+            } else {
+                return "PASSWORD";
+            }
+
     }
 
     public void registerUser(Usuario usuario) {
