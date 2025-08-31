@@ -8,7 +8,8 @@ public class LoginRequest {
         return email;
     }
 
-    public void setMail(String email) {
+    // Error estaba aquí - tenías setMail en lugar de setEmail
+    public void setEmail(String email) {
         this.email = email;
     }
 
