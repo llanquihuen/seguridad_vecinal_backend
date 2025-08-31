@@ -16,10 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -293,24 +290,44 @@ public class AdminController {
         }
     }
 
-    // BUSCAR USUARIOS POR RUT O EMAIL
-    @GetMapping("/users/search")
-    public ResponseEntity<Map<String, Object>> searchUser(@RequestParam String query) {
-        try {
-            Optional<Usuario> userByRut = userService.getUserByRut(query);
-            Optional<Usuario> userByEmail = userService.getUserByEmail(query);
 
-            Usuario foundUser = userByRut.orElse(userByEmail.orElse(null));
+
+
+    // BÚSQUEDA GLOBAL DE USUARIOS (MEJORADA)
+    @GetMapping("/users/search-global")
+    public ResponseEntity<Map<String, Object>> searchUsersGlobal(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        try {
+            if (query == null || query.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("status", "error");
+                error.put("message", "Término de búsqueda requerido");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Crear pageable para los resultados
+            Pageable pageable = PageRequest.of(page, size, Sort.by("fechaRegistro").descending());
+
+            // Buscar usuarios que coincidan con la query en múltiples campos
+            Page<Usuario> userPage = userService.searchUsers(query.trim(), pageable);
+
+            // Convertir a DTO
+            List<UserResponseDto> users = userPage.getContent().stream()
+                    .map(UserResponseDto::new)
+                    .collect(Collectors.toList());
 
             Map<String, Object> response = new HashMap<>();
-            if (foundUser != null) {
-                response.put("user", new UserResponseDto(foundUser));
-                response.put("status", "success");
-                response.put("message", "Usuario encontrado");
-            } else {
-                response.put("status", "not_found");
-                response.put("message", "Usuario no encontrado");
-            }
+            response.put("users", users);
+            response.put("currentPage", userPage.getNumber());
+            response.put("totalPages", userPage.getTotalPages());
+            response.put("totalElements", userPage.getTotalElements());
+            response.put("size", userPage.getSize());
+            response.put("query", query);
+            response.put("status", "success");
+            response.put("searchTips", getSearchTips());
 
             return ResponseEntity.ok(response);
 
@@ -320,6 +337,18 @@ public class AdminController {
             error.put("message", "Error en la búsqueda: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
+    }
+
+    // Método auxiliar para proporcionar tips de búsqueda
+    private List<String> getSearchTips() {
+        return Arrays.asList(
+                "Busca por nombre: 'Juan', 'María'",
+                "Busca por email: 'usuario@email.com'",
+                "Busca por RUT: '12345678-9'",
+                "Busca por estado: 'activo', 'inactivo'",
+                "Busca por verificación: 'verificado', 'pendiente'",
+                "Busca por rol: 'admin', 'usuario'"
+        );
     }
 
     // TEST ENDPOINT

@@ -199,7 +199,10 @@ public class UserService {
 
         return new UserStats(totalUsers, activeUsers, verifiedUsers, adminUsers, pendingUsers);
     }
-
+    // Buscar usuarios por texto (nombre, apellido, email, rut, estado, rol)
+    public Page<Usuario> searchUsers(String query, Pageable pageable) {
+        return usuarioRepository.searchByText(query, pageable);
+    }
     // Clase interna para estadísticas
     public static class UserStats {
         public final long total;
