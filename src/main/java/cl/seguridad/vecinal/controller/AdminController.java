@@ -49,13 +49,18 @@ public class AdminController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
+            e.printStackTrace(); // Esto mostrará el error completo en los logs de IntelliJ
+
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
-            error.put("message", "Error al obtener estadísticas");
-            error.put("error", e.getMessage());
+            error.put("message", "Error específico: " + e.getMessage());
+            error.put("cause", e.getCause() != null ? e.getCause().getMessage() : "No cause");
+            error.put("stackTrace", e.getClass().getSimpleName());
+
             return ResponseEntity.internalServerError().body(error);
         }
     }
+
 
     // ========== CRUD USUARIOS ==========
 

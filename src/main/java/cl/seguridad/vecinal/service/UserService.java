@@ -67,6 +67,8 @@ public class UserService {
     }
 
     // Crear nuevo usuario desde el dashboard
+    // Crear nuevo usuario desde el dashboard
+    // Crear nuevo usuario desde el dashboard
     public Usuario createUser(UserCreateRequest request) {
         // Validaciones
         if (usuarioRepository.existsUsuarioByEmail(request.getEmail())) {
@@ -86,10 +88,12 @@ public class UserService {
         usuario.setDireccion(request.getDireccion());
         usuario.setLatitud(request.getLatitud());
         usuario.setLongitud(request.getLongitud());
-        usuario.setRole(request.getRole() != null ? request.getRole() : Role.USER);
+        usuario.setRole(request.getRole() != null ? request.getRole() : Role.VECINO);
+        usuario.setVillaId(1L); // Ahora debería funcionar
+        usuario.setSector(request.getSector()); // Ahora debería funcionar
         usuario.setFechaRegistro(LocalDate.now());
         usuario.setEstadoCuenta(true);
-        usuario.setVerificado(request.getRole() == Role.ADMIN ? true : false); // Los admin se verifican automáticamente
+        usuario.setVerificado(request.getRole() == Role.SUPER_ADMIN || request.getRole() == Role.ADMIN_VILLA);
 
         return usuarioRepository.save(usuario);
     }
@@ -188,13 +192,19 @@ public class UserService {
     }
 
     // Obtener estadísticas de usuarios para el dashboard
+    // Obtener estadísticas de usuarios para el dashboard
     public UserStats getUserStats() {
         List<Usuario> allUsers = usuarioRepository.findAll();
 
         long totalUsers = allUsers.size();
         long activeUsers = allUsers.stream().filter(Usuario::isEstadoCuenta).count();
         long verifiedUsers = allUsers.stream().filter(Usuario::isVerificado).count();
-        long adminUsers = allUsers.stream().filter(u -> u.getRole() == Role.ADMIN).count();
+
+        // Se corrigio esta línea para usar los nuevos roles:
+        long adminUsers = allUsers.stream()
+                .filter(u -> u.getRole() == Role.SUPER_ADMIN || u.getRole() == Role.ADMIN_VILLA)
+                .count();
+
         long pendingUsers = totalUsers - verifiedUsers;
 
         return new UserStats(totalUsers, activeUsers, verifiedUsers, adminUsers, pendingUsers);

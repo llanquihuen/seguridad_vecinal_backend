@@ -37,6 +37,9 @@ public class UserCreateRequest {
     @NotNull(message = "El rol es obligatorio")
     private Role role;
 
+    @Size(max = 50, message = "El sector no puede exceder 50 caracteres")
+    private String sector;
+
     // Constructor vacío
     public UserCreateRequest() {}
 
@@ -126,6 +129,9 @@ public class UserCreateRequest {
     public void setRole(Role role) {
         this.role = role;
     }
+
+    public String getSector() { return sector; }
+    public void setSector(String sector) { this.sector = sector; }
 
     @Override
     public String toString() {
