@@ -74,7 +74,7 @@ public class AuthController {
             Usuario user = googleAuthService.verifyOrCreateUser(body.getIdToken());
             var pair = refreshTokenService.issuePair(user, httpReq.getHeader("User-Agent"), httpReq.getRemoteAddr());
             String role = user.getRole() != null ? user.getRole().name() : null;
-            Boolean isAdmin = user.getRole() != null && "ADMIN".equals(user.getRole().name());
+            Boolean isAdmin = user.getRole() != null && "SUPER_ADMIN".equals(user.getRole().name());
             return ResponseEntity.ok(new AuthResponse(pair.accessToken(), pair.refreshToken(), user.getEmail(), role, isAdmin));
         } catch (RuntimeException ex) {
             Throwable cause = ex.getCause();
