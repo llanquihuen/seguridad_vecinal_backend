@@ -18,17 +18,6 @@ import java.util.Optional;
 public class UsuarioController {
     @Autowired
     UserService userService;
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @GetMapping("/all")
-    public ResponseEntity<List<Usuario>> getAllUsers() {
-        List<Usuario> listUsers = userService.getAllUsers();
-        if (listUsers.isEmpty()){
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else
-            return new ResponseEntity<>(listUsers,HttpStatus.OK);
-    }
 
     @GetMapping("/findrut")
     public ResponseEntity<String> existUserByRut(@RequestParam String rut) {
@@ -46,16 +35,5 @@ public class UsuarioController {
 //        return optionalUser.map(ResponseEntity::ok)
 //                .orElseGet(() -> ResponseEntity.notFound().build());
 //    }
-    @GetMapping("/grantaccess")
-    public ResponseEntity<String> giveAccessyRut(@RequestParam String rut) {
-        boolean existRut = userService.checkRut(rut);
-        if (existRut){
-            Optional<Usuario> optionalUser = userService.getUserByRut(rut);
-            Usuario usuario = optionalUser.get();
-            usuario.setVerificado(true);
-            usuarioRepository.save(usuario);
-            return ResponseEntity.status(HttpStatus.OK).body("Se le ha dado acceso al usuario "+rut);
-        } else
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Usuario no existe");
-    }
+
 }

@@ -1,5 +1,5 @@
 package cl.seguridad.vecinal.modelo;
 
 public enum Role {
-    USER, ADMIN
+    SUPER_ADMIN, ADMIN_VILLA, VECINO
 }
