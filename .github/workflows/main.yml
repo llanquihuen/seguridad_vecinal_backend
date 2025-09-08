@@ -21,7 +21,7 @@ jobs:
           echo "DATASOURCE_URL=${{ secrets.DATASOURCE_URL }}" > .env
           echo "DATASOURCE_USERNAME=${{ secrets.DATASOURCE_USERNAME }}" >> .env
           echo "DATASOURCE_PASSWORD=${{ secrets.DATASOURCE_PASSWORD }}" >> .env
-
+          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
       - name: Verify .env file
         run: |
           if [ -f ".env" ]; then
