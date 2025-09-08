@@ -35,7 +35,7 @@ public class AuthService {
         }
         Usuario usuario = optUsuario.get();
         if (passwordEncoder.matches(password, usuario.getPassword())){
-            if (usuario.getRole() == Role.ADMIN){
+            if (usuario.getRole() == Role.SUPER_ADMIN || usuario.getRole() == Role.ADMIN_VILLA){
                 return "ADMIN";
             }
             if (usuario.isVerificado()){
