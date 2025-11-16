@@ -1,8 +1,10 @@
 package cl.seguridad.vecinal.service;
 
 import cl.seguridad.vecinal.dao.UsuarioRepository;
+import cl.seguridad.vecinal.dao.VillaRepository;
 import cl.seguridad.vecinal.modelo.Usuario;
 import cl.seguridad.vecinal.modelo.Role;
+import cl.seguridad.vecinal.modelo.Villa;
 import cl.seguridad.vecinal.modelo.dto.UserCreateRequest;
 import cl.seguridad.vecinal.modelo.dto.UserUpdateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -25,6 +28,9 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private VillaRepository villaRepository;
 
     // ========== MÉTODOS EXISTENTES (mantenemos tu código actual) ==========
 
@@ -89,8 +95,13 @@ public class UserService {
         usuario.setLatitud(request.getLatitud());
         usuario.setLongitud(request.getLongitud());
         usuario.setRole(request.getRole() != null ? request.getRole() : Role.VECINO);
-        usuario.setVillaId(1L); // Ahora debería funcionar
-        usuario.setSector(request.getSector()); // Ahora debería funcionar
+        // ✅ ASIGNAR VILLA SI SE PROPORCIONA
+        if (request.getVillaId() != null) {
+            Villa villa = villaRepository.findById(request.getVillaId())
+                    .orElseThrow(() -> new RuntimeException("Villa no encontrada con ID: " + request.getVillaId()));
+            usuario.setVilla(villa);
+        }
+        usuario.setSector(request.getSector());
         usuario.setFechaRegistro(LocalDate.now());
         usuario.setEstadoCuenta(true);
         usuario.setVerificado(request.getRole() == Role.SUPER_ADMIN || request.getRole() == Role.ADMIN_VILLA);
@@ -235,5 +246,31 @@ public class UserService {
         public long getVerified() { return verified; }
         public long getAdmins() { return admins; }
         public long getPending() { return pending; }
+    }
+    // ========== MÉTODOS PARA SECTORES ==========
+
+    // Obtener todos los sectores únicos
+    public List<String> getAllSectores() {
+        List<String> sectores = usuarioRepository.findDistinctSectores();
+        // Filtrar nulls y vacíos
+        return sectores.stream()
+                .filter(s -> s != null && !s.trim().isEmpty())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    // Asignar sector a usuario
+    public Usuario asignarSector(Integer userId, String sector) {
+        Usuario usuario = usuarioRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        usuario.setSector(sector);
+        return usuarioRepository.save(usuario);
+    }
+
+    // Obtener usuarios por sector con paginación
+    public Page<Usuario> getUsersBySector(String sector, Pageable pageable) {
+        return usuarioRepository.findBySector(sector, pageable);
     }
 }

@@ -18,6 +18,7 @@ public class UserResponseDto {
     private boolean verificado;
     private String tokenVerificacion;
     private Role role;
+    private String sector;
 
     // Constructor vacío
     public UserResponseDto() {}
@@ -37,6 +38,7 @@ public class UserResponseDto {
         this.verificado = usuario.isVerificado();
         this.tokenVerificacion = usuario.getTokenVerificacion();
         this.role = usuario.getRole();
+        this.sector = usuario.getSector();
     }
 
     // Constructor completo
@@ -56,6 +58,7 @@ public class UserResponseDto {
         this.verificado = verificado;
         this.tokenVerificacion = tokenVerificacion;
         this.role = role;
+
     }
 
     // Getters y Setters
@@ -162,6 +165,9 @@ public class UserResponseDto {
     public void setRole(Role role) {
         this.role = role;
     }
+
+    public String getSector() { return sector; }
+    public void setSector(String sector) { this.sector = sector; }
 
     // Métodos de utilidad
     public String getNombreCompleto() {

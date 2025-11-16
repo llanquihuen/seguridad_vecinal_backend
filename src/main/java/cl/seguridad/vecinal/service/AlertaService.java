@@ -37,15 +37,26 @@ public class AlertaService {
         Alerta alerta = new Alerta();
         alerta.setUsuario(usuario);
         alerta.setTipo(request.getTipo());
-        alerta.setDescripcion(request.getDescripcion() != null ?
-                request.getDescripcion() : request.getTipo().getDescripcion());
+
+        // ✅ Título: usar el enviado o generar automático del tipo
+        String titulo = request.getTitulo() != null && !request.getTitulo().isBlank() ?
+                request.getTitulo() :
+                request.getTipo().getTitulo();
+        alerta.setTitulo(titulo);
+
+        // ✅ Descripción: usar la enviada o generar automática del tipo
+        String descripcion = request.getDescripcion() != null && !request.getDescripcion().isBlank() ?
+                request.getDescripcion() :
+                request.getTipo().getDescripcion();
+        alerta.setDescripcion(descripcion);
+
         alerta.setLatitud(request.getLatitud());
         alerta.setLongitud(request.getLongitud());
         alerta.setDireccion(request.getDireccion());
         alerta.setSector(request.getSector());
         alerta.setComuna(request.getComuna());
         alerta.setCiudad(request.getCiudad());
-        alerta.setSilenciosa(request.getSilenciosa());
+        alerta.setSilenciosa(request.getSilenciosa() != null ? request.getSilenciosa() : false);
         alerta.setEstado(EstadoAlerta.ACTIVA);
         alerta.setFechaHora(LocalDateTime.now());
 
@@ -100,7 +111,7 @@ public class AlertaService {
 
         alerta.setEstado(nuevoEstado);
 
-        if (nuevoEstado == EstadoAlerta.ATENDIDA || nuevoEstado == EstadoAlerta.RESUELTA) {
+        if (nuevoEstado == EstadoAlerta.ATENDIDA || nuevoEstado == EstadoAlerta.ATENDIDA) {
             alerta.setAtendidaPor(adminId);
             alerta.setFechaAtencion(LocalDateTime.now());
             if (notas != null) {
@@ -116,7 +127,7 @@ public class AlertaService {
         Long total = alertaRepository.count();
         Long activas = alertaRepository.countByEstado(EstadoAlerta.ACTIVA);
         Long enProceso = alertaRepository.countByEstado(EstadoAlerta.EN_PROCESO);
-        Long resueltas = alertaRepository.countByEstado(EstadoAlerta.RESUELTA);
+        Long resueltas = alertaRepository.countByEstado(EstadoAlerta.ATENDIDA);
         Long hoy = alertaRepository.countAlertasHoy();
 
         return new AlertaStats(total, activas, enProceso, resueltas, hoy);
@@ -150,5 +161,20 @@ public class AlertaService {
             this.resueltas = resueltas;
             this.hoy = hoy;
         }
+    }
+    // ========== MÉTODOS PARA OBTENER ALERTAS POR SECTOR ==========
+
+    /**
+     * Obtener alertas por sector (solo activas por defecto)
+     */
+    public List<Alerta> obtenerAlertasPorSector(String sector) {
+        return alertaRepository.findBySectorAndEstadoOrderByFechaHoraDesc(sector, EstadoAlerta.ACTIVA);
+    }
+
+    /**
+     * Obtener alertas por sector y estado específico
+     */
+    public List<Alerta> obtenerAlertasPorSector(String sector, EstadoAlerta estado) {
+        return alertaRepository.findBySectorAndEstadoOrderByFechaHoraDesc(sector, estado);
     }
 }

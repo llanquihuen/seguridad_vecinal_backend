@@ -31,8 +31,8 @@ public class AlertaResponseDto {
 
     // Constructor desde entidad
     public AlertaResponseDto(Alerta alerta) {
-        this.alertaId = alerta.getAlertaId();
-        this.usuarioId = alerta.getUsuario().getUsuarioId();
+        this.alertaId = alerta.getId(); // ✅ getId() de Alerta
+        this.usuarioId = alerta.getUsuario().getUsuarioId(); // ✅ getUsuarioId() existe en Usuario
         this.nombreUsuario = alerta.getUsuario().getNombre();
         this.apellidoUsuario = alerta.getUsuario().getApellido();
         this.tipo = alerta.getTipo();

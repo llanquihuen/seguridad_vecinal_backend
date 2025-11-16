@@ -1,28 +1,21 @@
-// src/main/java/cl/seguridad/vecinal/modelo/dto/AlertaCreateRequest.java
 package cl.seguridad.vecinal.modelo.dto;
 
 import cl.seguridad.vecinal.modelo.TipoAlertaEnum;
-import jakarta.validation.constraints.NotNull;
 
 public class AlertaCreateRequest {
-    @NotNull(message = "El usuario es obligatorio")
     private Integer usuarioId;
-
-    @NotNull(message = "El tipo de alerta es obligatorio")
     private TipoAlertaEnum tipo;
-
+    private String titulo; // ✅ AGREGAR ESTE CAMPO
     private String descripcion;
-
     private Double latitud;
     private Double longitud;
     private String direccion;
     private String sector;
     private String comuna;
     private String ciudad;
+    private Boolean silenciosa;
 
-    private Boolean silenciosa = false;
-
-    // Constructores
+    // Constructor vacío
     public AlertaCreateRequest() {}
 
     // Getters y Setters
@@ -31,6 +24,10 @@ public class AlertaCreateRequest {
 
     public TipoAlertaEnum getTipo() { return tipo; }
     public void setTipo(TipoAlertaEnum tipo) { this.tipo = tipo; }
+
+    // ✅ AGREGAR GETTER Y SETTER PARA TITULO
+    public String getTitulo() { return titulo; }
+    public void setTitulo(String titulo) { this.titulo = titulo; }
 
     public String getDescripcion() { return descripcion; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }

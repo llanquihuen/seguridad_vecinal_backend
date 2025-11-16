@@ -1,6 +1,7 @@
 // src/main/java/cl/seguridad/vecinal/controller/AlertaController.java
 package cl.seguridad.vecinal.controller;
 
+import cl.seguridad.vecinal.dao.AlertaRepository;
 import cl.seguridad.vecinal.modelo.Alerta;
 import cl.seguridad.vecinal.modelo.EstadoAlerta;
 import cl.seguridad.vecinal.modelo.TipoAlertaEnum;
@@ -29,6 +30,9 @@ public class AlertaController {
 
     @Autowired
     private AlertaService alertaService;
+
+    @Autowired
+    private AlertaRepository alertaRepository;
 
     // ========== CREAR ALERTA ==========
     @PostMapping("/crear")
@@ -371,6 +375,41 @@ public class AlertaController {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", "Error al obtener tipos de alerta: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    // OBTENER ALERTAS POR SECTOR
+    @GetMapping("/sector/{sector}")
+    public ResponseEntity<Map<String, Object>> obtenerAlertasPorSector(
+            @PathVariable String sector,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        try {
+            Sort sort = Sort.by("fechaHora").descending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            Page<Alerta> alertaPage = alertaRepository.findBySector(sector, pageable);
+
+            List<AlertaResponseDto> alertas = alertaPage.getContent().stream()
+                    .map(AlertaResponseDto::new)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("alertas", alertas);
+            response.put("currentPage", alertaPage.getNumber());
+            response.put("totalPages", alertaPage.getTotalPages());
+            response.put("totalElements", alertaPage.getTotalElements());
+            response.put("sector", sector);
+            response.put("status", "success");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Error al obtener alertas del sector: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }

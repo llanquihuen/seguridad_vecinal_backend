@@ -36,17 +36,29 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    // AGREGAR estos nuevos campos:
-    private Long villaId;
+    // ✅ RELACIÓN CON VILLA
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "villa_id", referencedColumnName = "villa_id")
+    private Villa villa;
+
+    // ✅ SECTOR DENTRO DE LA VILLA
     private String sector;
 
-    // Lombok generará automáticamente los getters/setters
-    // pero si no usas Lombok, agrega manualmente:
-    /*
-    public Long getVillaId() { return villaId; }
-    public void setVillaId(Long villaId) { this.villaId = villaId; }
-    
-    public String getSector() { return sector; }
-    public void setSector(String sector) { this.sector = sector; }
-    */
+    // ✅ MÉTODOS AUXILIARES
+    @Transient
+    public Long getVillaId() {
+        return villa != null ? villa.getId() : null;
+    }
+
+    @Transient
+    public String getVillaNombre() {
+        return villa != null ? villa.getNombre() : null;
+    }
+
+    public void setVillaId(Long villaId) {
+
+    }
+
+
+
 }

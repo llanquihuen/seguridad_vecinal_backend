@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -32,4 +33,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario,Integer> {
             "(LOWER(:query) LIKE '%admin%' AND u.role = 'ADMIN') OR " +
             "(LOWER(:query) LIKE '%usuario%' AND u.role = 'USER')")
     Page<Usuario> searchByText(@Param("query") String query, Pageable pageable);
+    // Buscar usuarios por sector
+    Page<Usuario> findBySector(String sector, Pageable pageable);
+
+    // Obtener sectores únicos
+    @Query("SELECT DISTINCT u.sector FROM Usuario u WHERE u.sector IS NOT NULL AND u.sector <> ''")
+    List<String> findDistinctSectores();
 }
