@@ -1,15 +1,12 @@
 package cl.seguridad.vecinal.controller;
 
-import cl.seguridad.vecinal.modelo.Alerta;
-import cl.seguridad.vecinal.modelo.EstadoAlerta;
-import cl.seguridad.vecinal.modelo.Usuario;
 import cl.seguridad.vecinal.modelo.Role;
+import cl.seguridad.vecinal.modelo.Usuario;
 import cl.seguridad.vecinal.modelo.dto.UserCreateRequest;
 import cl.seguridad.vecinal.modelo.dto.UserUpdateRequest;
 import cl.seguridad.vecinal.modelo.dto.UserResponseDto;
-
-import cl.seguridad.vecinal.service.AlertaService;
 import cl.seguridad.vecinal.service.UserService;
+import cl.seguridad.vecinal.dao.UsuarioRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -18,13 +15,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,53 +31,36 @@ public class AdminController {
     private UserService userService;
 
     @Autowired
-    private AlertaService alertaService;
+    private UsuarioRepository usuarioRepository;
+
+    // ✅ MÉTODO HELPER: Obtener usuario actual autenticado
+    private Usuario getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName();
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado"));
+    }
 
     // ========== DASHBOARD STATS ==========
-    // ESTADiSTICAS DEL DASHBOARD (AGREGAR EN LA SECCIÓN DE DASHBOARD)
     @GetMapping("/dashboard/stats")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {
         try {
-            Map<String, Object> stats = new HashMap<>();
+            Usuario currentUser = getCurrentUser();
+            Long villaId = currentUser.getRole() == Role.ADMIN_VILLA ? currentUser.getVillaId() : null;
 
-            // Total usuarios
-            long totalUsers = userService.countAllUsers();
-            stats.put("totalUsers", totalUsers);
+            UserService.UserStats stats = userService.getUserStats(villaId);
 
-            // Usuarios verificados
-            long usuariosVerificados = userService.countVerifiedUsers();
-            stats.put("usuariosVerificados", usuariosVerificados);
+            Map<String, Object> response = new HashMap<>();
+            response.put("totalUsers", stats.total);
+            response.put("activeUsers", stats.active);
+            response.put("verifiedUsers", stats.verified);
+            response.put("adminUsers", stats.admins);
+            response.put("pendingUsers", stats.pending);
+            response.put("villaId", villaId);
+            response.put("villaNombre", currentUser.getVillaNombre());
+            response.put("status", "success");
 
-            // ⬇️ CAMBIO CRÍTICO: alertaService (minúscula) en lugar de AlertaService
-            long alertasActivas = alertaService.countAlertasByEstado(EstadoAlerta.ACTIVA);
-            stats.put("alertasActivas", alertasActivas);
-
-            long alertasEnProceso = alertaService.countAlertasByEstado(EstadoAlerta.EN_PROCESO);
-            stats.put("alertasEnProceso", alertasEnProceso);
-
-            long alertasAtendidas = alertaService.countAlertasByEstado(EstadoAlerta.ATENDIDA);
-            stats.put("alertasAtendidas", alertasAtendidas);
-
-            long alertasHoy = alertaService.countAlertasHoy();
-            stats.put("alertasHoy", alertasHoy);
-
-            // Actividad reciente
-            List<Map<String, Object>> actividadReciente = new ArrayList<>();
-            List<Alerta> ultimasAlertas = alertaService.findTop5RecentAlertas();
-
-            for (Alerta alerta : ultimasAlertas) {
-                Map<String, Object> actividad = new HashMap<>();
-                actividad.put("tipo", "alerta");
-                actividad.put("accion", "Nueva alerta: " + alerta.getTitulo());
-                actividad.put("usuario", alerta.getUsuario().getNombre() + " " + alerta.getUsuario().getApellido());
-                actividad.put("tiempo", getTimeAgo(alerta.getFechaHora()));
-                actividadReciente.add(actividad);
-            }
-
-            stats.put("actividadReciente", actividadReciente);
-            stats.put("status", "success");
-
-            return ResponseEntity.ok(stats);
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
@@ -93,30 +70,9 @@ public class AdminController {
         }
     }
 
-    // Metodo auxiliar
-    private String getTimeAgo(LocalDateTime dateTime) {
-        if (dateTime == null) return "Desconocido";
-
-        try {
-            long minutes = ChronoUnit.MINUTES.between(dateTime, LocalDateTime.now());
-
-            if (minutes < 1) return "Ahora";
-            if (minutes == 1) return "1 min";
-            if (minutes < 60) return minutes + " min";
-            if (minutes < 120) return "1 hora";
-            if (minutes < 1440) return (minutes / 60) + " horas";
-            if (minutes < 2880) return "1 día";
-            return (minutes / 1440) + " días";
-        } catch (Exception e) {
-            return "Hace tiempo";
-        }
-    }
-
     // ========== CRUD USUARIOS ==========
 
-    // ✅ RUTAS ESPECÍFICAS PRIMERO (sin parámetros de path)
-
-    // OBTENER USUARIOS RECIENTES (NUEVO - DEBE IR ANTES DE /{id})
+    // ✅ OBTENER USUARIOS RECIENTES (CON FILTRO DE VILLA)
     @GetMapping("/users/recent")
     public ResponseEntity<Map<String, Object>> getRecentUsers(
             @RequestParam(defaultValue = "0") int page,
@@ -125,10 +81,13 @@ public class AdminController {
             @RequestParam(defaultValue = "desc") String sortDir) {
 
         try {
+            Usuario currentUser = getCurrentUser();
+            Long villaId = currentUser.getRole() == Role.ADMIN_VILLA ? currentUser.getVillaId() : null;
+
             Sort sort = sortDir.equals("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<Usuario> userPage = userService.getUsersPaginated(pageable);
+            Page<Usuario> userPage = userService.getUsersPaginated(pageable, villaId);
 
             List<UserResponseDto> users = userPage.getContent().stream()
                     .map(UserResponseDto::new)
@@ -152,7 +111,7 @@ public class AdminController {
         }
     }
 
-    // BÚSQUEDA GLOBAL DE USUARIOS (MOVIDO AQUÍ - ANTES DE /{id})
+    // ✅ BÚSQUEDA GLOBAL DE USUARIOS (CON FILTRO DE VILLA)
     @GetMapping("/users/search-global")
     public ResponseEntity<Map<String, Object>> searchUsersGlobal(
             @RequestParam String query,
@@ -160,6 +119,9 @@ public class AdminController {
             @RequestParam(defaultValue = "20") int size) {
 
         try {
+            Usuario currentUser = getCurrentUser();
+            Long villaId = currentUser.getRole() == Role.ADMIN_VILLA ? currentUser.getVillaId() : null;
+
             if (query == null || query.trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("status", "error");
@@ -168,7 +130,7 @@ public class AdminController {
             }
 
             Pageable pageable = PageRequest.of(page, size, Sort.by("fechaRegistro").descending());
-            Page<Usuario> userPage = userService.searchUsers(query.trim(), pageable);
+            Page<Usuario> userPage = userService.searchUsers(query.trim(), pageable, villaId);
 
             List<UserResponseDto> users = userPage.getContent().stream()
                     .map(UserResponseDto::new)
@@ -182,7 +144,6 @@ public class AdminController {
             response.put("size", userPage.getSize());
             response.put("query", query);
             response.put("status", "success");
-            response.put("searchTips", getSearchTips());
 
             return ResponseEntity.ok(response);
 
@@ -194,17 +155,28 @@ public class AdminController {
         }
     }
 
-    // ✅ RUTAS CON PARÁMETROS DE PATH AL FINAL
-
-    // OBTENER USUARIO POR ID (MOVIDO DESPUÉS DE LAS RUTAS ESPECÍFICAS)
+    // OBTENER USUARIO POR ID
     @GetMapping("/users/{id}")
     public ResponseEntity<Map<String, Object>> getUserById(@PathVariable Integer id) {
         try {
-            Optional<Usuario> usuario = userService.getUserById(id);
+            Usuario currentUser = getCurrentUser();
+            Optional<Usuario> usuarioOpt = userService.getUserById(id);
 
-            if (usuario.isPresent()) {
+            if (usuarioOpt.isPresent()) {
+                Usuario usuario = usuarioOpt.get();
+
+                // ✅ ADMIN_VILLA solo puede ver usuarios de su villa
+                if (currentUser.getRole() == Role.ADMIN_VILLA) {
+                    if (!usuario.getVillaId().equals(currentUser.getVillaId())) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("status", "error");
+                        error.put("message", "No tienes permisos para ver este usuario");
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+                    }
+                }
+
                 Map<String, Object> response = new HashMap<>();
-                response.put("user", new UserResponseDto(usuario.get()));
+                response.put("user", new UserResponseDto(usuario));
                 response.put("status", "success");
                 return ResponseEntity.ok(response);
             } else {
@@ -218,42 +190,6 @@ public class AdminController {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", "Error al obtener usuario: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(error);
-        }
-    }
-
-    // OBTENER TODOS LOS USUARIOS (CON PAGINACIÓN)
-    @GetMapping("/users")
-    public ResponseEntity<Map<String, Object>> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "fechaRegistro") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
-
-        try {
-            Sort sort = sortDir.equals("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-            Pageable pageable = PageRequest.of(page, size, sort);
-
-            Page<Usuario> userPage = userService.getUsersPaginated(pageable);
-
-            List<UserResponseDto> users = userPage.getContent().stream()
-                    .map(UserResponseDto::new)
-                    .collect(Collectors.toList());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("users", users);
-            response.put("currentPage", userPage.getNumber());
-            response.put("totalPages", userPage.getTotalPages());
-            response.put("totalElements", userPage.getTotalElements());
-            response.put("size", userPage.getSize());
-            response.put("status", "success");
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("message", "Error al obtener usuarios: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }
@@ -284,14 +220,15 @@ public class AdminController {
         }
     }
 
-    // ACTUALIZAR USUARIO
+    // ✅ ACTUALIZAR USUARIO (CON VALIDACIÓN DE PERMISOS)
     @PutMapping("/users/{id}")
     public ResponseEntity<Map<String, Object>> updateUser(
             @PathVariable Integer id,
             @Valid @RequestBody UserUpdateRequest request) {
 
         try {
-            Usuario updatedUser = userService.updateUser(id, request);
+            Usuario currentUser = getCurrentUser();
+            Usuario updatedUser = userService.updateUser(id, request, currentUser);
 
             Map<String, Object> response = new HashMap<>();
             response.put("user", new UserResponseDto(updatedUser));
@@ -313,11 +250,16 @@ public class AdminController {
         }
     }
 
-    // CAMBIAR VERIFICACIÓN DE USUARIO
+    // ✅ CAMBIAR VERIFICACIÓN DE USUARIO (CON SECTOR)
     @PutMapping("/users/{id}/verification")
-    public ResponseEntity<Map<String, Object>> toggleVerification(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, Object>> toggleVerification(
+            @PathVariable Integer id,
+            @RequestBody(required = false) Map<String, String> body) {
         try {
-            Usuario user = userService.toggleVerification(id);
+            Usuario currentUser = getCurrentUser();
+            String sector = body != null ? body.get("sector") : null;
+
+            Usuario user = userService.toggleVerification(id, sector, currentUser);
 
             Map<String, Object> response = new HashMap<>();
             response.put("user", new UserResponseDto(user));
@@ -330,11 +272,10 @@ public class AdminController {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
         }
     }
 
-    
     // CAMBIAR ESTADO DE CUENTA
     @PutMapping("/users/{id}/status")
     public ResponseEntity<Map<String, Object>> toggleAccountStatus(@PathVariable Integer id) {
@@ -356,15 +297,39 @@ public class AdminController {
         }
     }
 
-    // DESACTIVAR USUARIO (SOFT DELETE)
-    @PutMapping("/users/{id}/deactivate")
-    public ResponseEntity<Map<String, Object>> deactivateUser(@PathVariable Integer id) {
+    // ✅ CAMBIAR ROL (SOLO SUPER_ADMIN)
+    @PutMapping("/users/{id}/role")
+    public ResponseEntity<Map<String, Object>> updateUserRole(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> request) {
+
         try {
-            userService.deactivateUser(id);
+            Usuario currentUser = getCurrentUser();
+            String roleStr = request.get("role");
+
+            if (roleStr == null || roleStr.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("status", "error");
+                error.put("message", "El rol es obligatorio");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            Role role;
+            try {
+                role = Role.valueOf(roleStr);
+            } catch (IllegalArgumentException e) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("status", "error");
+                error.put("message", "Rol inválido: " + roleStr);
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            Usuario usuario = userService.changeUserRole(id, role, currentUser);
 
             Map<String, Object> response = new HashMap<>();
+            response.put("user", new UserResponseDto(usuario));
             response.put("status", "success");
-            response.put("message", "Usuario desactivado exitosamente");
+            response.put("message", "Rol actualizado exitosamente");
 
             return ResponseEntity.ok(response);
 
@@ -372,15 +337,21 @@ public class AdminController {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Error al actualizar rol: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
         }
     }
 
-    // ELIMINAR USUARIO PERMANENTEMENTE
+    // ✅ ELIMINAR USUARIO (CON VALIDACIÓN)
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Integer id) {
         try {
-            userService.deleteUser(id);
+            Usuario currentUser = getCurrentUser();
+            userService.deleteUser(id, currentUser);
 
             Map<String, Object> response = new HashMap<>();
             response.put("status", "success");
@@ -392,41 +363,18 @@ public class AdminController {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
         }
     }
 
-    // Método auxiliar para proporcionar tips de búsqueda
-    private List<String> getSearchTips() {
-        return Arrays.asList(
-                "Busca por nombre: 'Juan', 'María'",
-                "Busca por email: 'usuario@email.com'",
-                "Busca por RUT: '12345678-9'",
-                "Busca por estado: 'activo', 'inactivo'",
-                "Busca por verificación: 'verificado', 'pendiente'",
-                "Busca por rol: 'admin', 'usuario'"
-        );
-    }
-
-    // TEST ENDPOINT
-    @GetMapping("/test")
-    public ResponseEntity<Map<String, String>> testConnection() {
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Conexión exitosa con la API Spring Boot");
-        response.put("status", "OK");
-        response.put("timestamp", String.valueOf(System.currentTimeMillis()));
-        response.put("port", "8082");
-
-        return ResponseEntity.ok(response);
-    }
-
-    // ========== GESTIÓN DE SECTORES ==========
-
-    // OBTENER TODOS LOS SECTORES ÚNICOS
+    // ✅ OBTENER SECTORES DE LA VILLA DEL ADMIN
     @GetMapping("/sectores")
     public ResponseEntity<Map<String, Object>> obtenerSectores() {
         try {
-            List<String> sectores = userService.getAllSectores();
+            Usuario currentUser = getCurrentUser();
+            Long villaId = currentUser.getRole() == Role.ADMIN_VILLA ? currentUser.getVillaId() : null;
+
+            List<String> sectores = userService.getSectoresByVilla(villaId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("sectores", sectores);
@@ -443,132 +391,14 @@ public class AdminController {
         }
     }
 
-    // ASIGNAR SECTOR A USUARIO
-    @PutMapping("/usuarios/{id}/sector")
-    public ResponseEntity<Map<String, Object>> asignarSector(
-            @PathVariable Integer id,
-            @RequestBody Map<String, String> request) {
+    // TEST ENDPOINT
+    @GetMapping("/test")
+    public ResponseEntity<Map<String, String>> testConnection() {
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Conexión exitosa con la API Spring Boot");
+        response.put("status", "OK");
+        response.put("timestamp", String.valueOf(System.currentTimeMillis()));
 
-        try {
-            String sector = request.get("sector");
-
-            if (sector == null || sector.trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("status", "error");
-                error.put("message", "El sector es obligatorio");
-                return ResponseEntity.badRequest().body(error);
-            }
-
-            Usuario usuario = userService.asignarSector(id, sector.trim());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("user", new UserResponseDto(usuario));
-            response.put("status", "success");
-            response.put("message", "Sector asignado exitosamente");
-
-            return ResponseEntity.ok(response);
-
-        } catch (RuntimeException e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("message", "Error al asignar sector: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(error);
-        }
+        return ResponseEntity.ok(response);
     }
-
-    // OBTENER USUARIOS POR SECTOR
-    @GetMapping("/usuarios/sector/{sector}")
-    public ResponseEntity<Map<String, Object>> obtenerUsuariosPorSector(
-            @PathVariable String sector,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        try {
-            Sort sort = Sort.by("fechaRegistro").descending();
-            Pageable pageable = PageRequest.of(page, size, sort);
-
-            Page<Usuario> userPage = userService.getUsersBySector(sector, pageable);
-
-            List<UserResponseDto> users = userPage.getContent().stream()
-                    .map(UserResponseDto::new)
-                    .collect(Collectors.toList());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("users", users);
-            response.put("currentPage", userPage.getNumber());
-            response.put("totalPages", userPage.getTotalPages());
-            response.put("totalElements", userPage.getTotalElements());
-            response.put("sector", sector);
-            response.put("status", "success");
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("message", "Error al obtener usuarios del sector: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(error);
-        }
-    }
-
-    @PutMapping("/users/{id}/role")
-    public ResponseEntity<Map<String, Object>> updateUserRole(
-            @PathVariable Integer id,
-            @RequestBody Map<String, String> request) {
-
-        try {
-            String roleStr = request.get("role");
-
-            if (roleStr == null || roleStr.trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("status", "error");
-                error.put("message", "El rol es obligatorio");
-                return ResponseEntity.badRequest().body(error);
-            }
-
-            Role role;
-            try {
-                role = Role.valueOf(roleStr);
-            } catch (IllegalArgumentException e) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("status", "error");
-                error.put("message", "Rol inválido: " + roleStr + ". Valores permitidos: VECINO, ADMIN_VILLA, SUPER_ADMIN");
-                return ResponseEntity.badRequest().body(error);
-            }
-
-            Usuario usuario = userService.getUserById(id)
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
-
-            usuario.setRole(role);
-
-            // Si es ADMIN o SUPER_ADMIN, verificar automáticamente
-            if (role == Role.SUPER_ADMIN || role == Role.ADMIN_VILLA) {
-                usuario.setVerificado(true);
-            }
-
-            Usuario updated = userService.saveUser(usuario);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("user", new UserResponseDto(updated));
-            response.put("status", "success");
-            response.put("message", "Rol actualizado exitosamente a " + role.name());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("message", "Error al actualizar rol: " + e.getMessage());
-            error.put("cause", e.getCause() != null ? e.getCause().getMessage() : "No cause");
-            return ResponseEntity.internalServerError().body(error);
-        }
-    }
-
-
-
 }

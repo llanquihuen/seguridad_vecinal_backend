@@ -1,5 +1,6 @@
 package cl.seguridad.vecinal.dao;
 
+import cl.seguridad.vecinal.modelo.Role;
 import cl.seguridad.vecinal.modelo.Usuario;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,8 +19,30 @@ public interface UsuarioRepository extends JpaRepository<Usuario,Integer> {
     boolean existsUsuarioByEmail (String email);
     boolean existsUsuarioByRut (String rut);
 
-    // NUEVO MÉTODO DE BÚSQUEDA
+    // ✅ FILTRAR POR VILLA (usando villa.id en lugar de villaId)
+    @Query("SELECT u FROM Usuario u WHERE u.villa.id = :villaId")
+    Page<Usuario> findByVillaId(@Param("villaId") Long villaId, Pageable pageable);
+
+    // ✅ FILTRAR POR VILLA Y SECTOR
+    @Query("SELECT u FROM Usuario u WHERE u.villa.id = :villaId AND u.sector = :sector")
+    Page<Usuario> findByVillaIdAndSector(@Param("villaId") Long villaId, @Param("sector") String sector, Pageable pageable);
+
+    // ✅ CONTAR POR VILLA
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.villa.id = :villaId")
+    long countByVillaId(@Param("villaId") Long villaId);
+
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.villa.id = :villaId AND u.verificado = true")
+    long countByVillaIdAndVerificadoTrue(@Param("villaId") Long villaId);
+
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.villa.id = :villaId AND u.estadoCuenta = true")
+    long countByVillaIdAndEstadoCuentaTrue(@Param("villaId") Long villaId);
+
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.villa.id = :villaId AND u.role = :role")
+    long countByVillaIdAndRole(@Param("villaId") Long villaId, @Param("role") Role role);
+
+    // ✅ BÚSQUEDA CON FILTRO DE VILLA
     @Query("SELECT u FROM Usuario u WHERE " +
+            "(:villaId IS NULL OR u.villa.id = :villaId) AND (" +
             "LOWER(u.nombre) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(u.apellido) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
@@ -29,17 +52,17 @@ public interface UsuarioRepository extends JpaRepository<Usuario,Integer> {
             "(LOWER(:query) LIKE '%activ%' AND u.estadoCuenta = true) OR " +
             "(LOWER(:query) LIKE '%inactiv%' AND u.estadoCuenta = false) OR " +
             "(LOWER(:query) LIKE '%verificad%' AND u.verificado = true) OR " +
-            "(LOWER(:query) LIKE '%pendiente%' AND u.verificado = false) OR " +
-            "(LOWER(:query) LIKE '%admin%' AND u.role = 'ADMIN') OR " +
-            "(LOWER(:query) LIKE '%usuario%' AND u.role = 'USER')")
-    Page<Usuario> searchByText(@Param("query") String query, Pageable pageable);
+            "(LOWER(:query) LIKE '%pendiente%' AND u.verificado = false))")
+    Page<Usuario> searchByTextAndVilla(@Param("query") String query, @Param("villaId") Long villaId, Pageable pageable);
+
     // Buscar usuarios por sector
     Page<Usuario> findBySector(String sector, Pageable pageable);
 
-    // Obtener sectores únicos
+    // Obtener sectores únicos DE UNA VILLA
+    @Query("SELECT DISTINCT u.sector FROM Usuario u WHERE u.villa.id = :villaId AND u.sector IS NOT NULL AND u.sector <> ''")
+    List<String> findDistinctSectoresByVillaId(@Param("villaId") Long villaId);
+
+    // Obtener sectores únicos GLOBALES
     @Query("SELECT DISTINCT u.sector FROM Usuario u WHERE u.sector IS NOT NULL AND u.sector <> ''")
     List<String> findDistinctSectores();
-
-    // Contar usuarios verificados (AGREGAR EN LA INTERFACE)
-    long countByVerificadoTrue();
 }
