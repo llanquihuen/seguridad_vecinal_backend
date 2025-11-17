@@ -1,10 +1,14 @@
 package cl.seguridad.vecinal.controller;
 
+import cl.seguridad.vecinal.modelo.Alerta;
+import cl.seguridad.vecinal.modelo.EstadoAlerta;
 import cl.seguridad.vecinal.modelo.Usuario;
 import cl.seguridad.vecinal.modelo.Role;
 import cl.seguridad.vecinal.modelo.dto.UserCreateRequest;
 import cl.seguridad.vecinal.modelo.dto.UserUpdateRequest;
 import cl.seguridad.vecinal.modelo.dto.UserResponseDto;
+
+import cl.seguridad.vecinal.service.AlertaService;
 import cl.seguridad.vecinal.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +19,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,37 +36,79 @@ public class AdminController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private AlertaService alertaService;
+
     // ========== DASHBOARD STATS ==========
+    // ESTADiSTICAS DEL DASHBOARD (AGREGAR EN LA SECCIÓN DE DASHBOARD)
     @GetMapping("/dashboard/stats")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {
         try {
-            UserService.UserStats stats = userService.getUserStats();
+            Map<String, Object> stats = new HashMap<>();
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("users", stats.total);
-            response.put("sales", 0);
-            response.put("orders", 0);
-            response.put("revenue", 0);
-            response.put("totalUsers", stats.total);
-            response.put("activeUsers", stats.active);
-            response.put("verifiedUsers", stats.verified);
-            response.put("adminUsers", stats.admins);
-            response.put("pendingUsers", stats.pending);
-            response.put("status", "success");
-            response.put("timestamp", System.currentTimeMillis());
+            // Total usuarios
+            long totalUsers = userService.countAllUsers();
+            stats.put("totalUsers", totalUsers);
 
-            return ResponseEntity.ok(response);
+            // Usuarios verificados
+            long usuariosVerificados = userService.countVerifiedUsers();
+            stats.put("usuariosVerificados", usuariosVerificados);
+
+            // ⬇️ CAMBIO CRÍTICO: alertaService (minúscula) en lugar de AlertaService
+            long alertasActivas = alertaService.countAlertasByEstado(EstadoAlerta.ACTIVA);
+            stats.put("alertasActivas", alertasActivas);
+
+            long alertasEnProceso = alertaService.countAlertasByEstado(EstadoAlerta.EN_PROCESO);
+            stats.put("alertasEnProceso", alertasEnProceso);
+
+            long alertasAtendidas = alertaService.countAlertasByEstado(EstadoAlerta.ATENDIDA);
+            stats.put("alertasAtendidas", alertasAtendidas);
+
+            long alertasHoy = alertaService.countAlertasHoy();
+            stats.put("alertasHoy", alertasHoy);
+
+            // Actividad reciente
+            List<Map<String, Object>> actividadReciente = new ArrayList<>();
+            List<Alerta> ultimasAlertas = alertaService.findTop5RecentAlertas();
+
+            for (Alerta alerta : ultimasAlertas) {
+                Map<String, Object> actividad = new HashMap<>();
+                actividad.put("tipo", "alerta");
+                actividad.put("accion", "Nueva alerta: " + alerta.getTitulo());
+                actividad.put("usuario", alerta.getUsuario().getNombre() + " " + alerta.getUsuario().getApellido());
+                actividad.put("tiempo", getTimeAgo(alerta.getFechaHora()));
+                actividadReciente.add(actividad);
+            }
+
+            stats.put("actividadReciente", actividadReciente);
+            stats.put("status", "success");
+
+            return ResponseEntity.ok(stats);
 
         } catch (Exception e) {
-            e.printStackTrace();
-
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
-            error.put("message", "Error específico: " + e.getMessage());
-            error.put("cause", e.getCause() != null ? e.getCause().getMessage() : "No cause");
-            error.put("stackTrace", e.getClass().getSimpleName());
-
+            error.put("message", "Error al obtener estadísticas: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    // Metodo auxiliar
+    private String getTimeAgo(LocalDateTime dateTime) {
+        if (dateTime == null) return "Desconocido";
+
+        try {
+            long minutes = ChronoUnit.MINUTES.between(dateTime, LocalDateTime.now());
+
+            if (minutes < 1) return "Ahora";
+            if (minutes == 1) return "1 min";
+            if (minutes < 60) return minutes + " min";
+            if (minutes < 120) return "1 hora";
+            if (minutes < 1440) return (minutes / 60) + " horas";
+            if (minutes < 2880) return "1 día";
+            return (minutes / 1440) + " días";
+        } catch (Exception e) {
+            return "Hace tiempo";
         }
     }
 
@@ -283,38 +334,7 @@ public class AdminController {
         }
     }
 
-    // CAMBIAR ROL DE USUARIO
-    @PutMapping("/users/{id}/role")
-    public ResponseEntity<Map<String, Object>> changeUserRole(
-            @PathVariable Integer id,
-            @RequestBody Map<String, String> request) {
-
-        try {
-            String roleStr = request.get("role");
-            Role newRole = Role.valueOf(roleStr.toUpperCase());
-
-            Usuario user = userService.changeUserRole(id, newRole);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("user", new UserResponseDto(user));
-            response.put("status", "success");
-            response.put("message", "Rol actualizado exitosamente");
-
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("message", "Rol inválido");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        } catch (RuntimeException e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
-    }
-
+    
     // CAMBIAR ESTADO DE CUENTA
     @PutMapping("/users/{id}/status")
     public ResponseEntity<Map<String, Object>> toggleAccountStatus(@PathVariable Integer id) {
@@ -495,4 +515,60 @@ public class AdminController {
             return ResponseEntity.internalServerError().body(error);
         }
     }
+
+    @PutMapping("/users/{id}/role")
+    public ResponseEntity<Map<String, Object>> updateUserRole(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> request) {
+
+        try {
+            String roleStr = request.get("role");
+
+            if (roleStr == null || roleStr.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("status", "error");
+                error.put("message", "El rol es obligatorio");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            Role role;
+            try {
+                role = Role.valueOf(roleStr);
+            } catch (IllegalArgumentException e) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("status", "error");
+                error.put("message", "Rol inválido: " + roleStr + ". Valores permitidos: VECINO, ADMIN_VILLA, SUPER_ADMIN");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            Usuario usuario = userService.getUserById(id)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
+
+            usuario.setRole(role);
+
+            // Si es ADMIN o SUPER_ADMIN, verificar automáticamente
+            if (role == Role.SUPER_ADMIN || role == Role.ADMIN_VILLA) {
+                usuario.setVerificado(true);
+            }
+
+            Usuario updated = userService.saveUser(usuario);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("user", new UserResponseDto(updated));
+            response.put("status", "success");
+            response.put("message", "Rol actualizado exitosamente a " + role.name());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Error al actualizar rol: " + e.getMessage());
+            error.put("cause", e.getCause() != null ? e.getCause().getMessage() : "No cause");
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+
+
 }

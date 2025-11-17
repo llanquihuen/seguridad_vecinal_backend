@@ -68,4 +68,13 @@ public interface AlertaRepository extends JpaRepository<Alerta, Integer> {
     List<Alerta> findByUbicacion(@Param("lat") Double latitud,
                                  @Param("lng") Double longitud,
                                  @Param("radioKm") Double radioKm);
-}
+
+    // Obtener últimas 5 alertas
+    List<Alerta> findTop5ByOrderByFechaHoraDesc();
+
+    }
+
+
+
+
+

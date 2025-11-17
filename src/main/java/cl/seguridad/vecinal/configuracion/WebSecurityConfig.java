@@ -37,21 +37,23 @@ public class WebSecurityConfig {
     @Autowired
     private JwtAuthFilter jwtAuthFilter;
 
+    // Asegúrate de que estos endpoints NO requieran autenticación:
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .authorizeHttpRequests((auth) -> auth
-                    .requestMatchers("/api/auth/**").permitAll()          // ✅ Login sin autenticación
-                    .requestMatchers("/api/auth/authenticate").permitAll() // ✅ Específicamente authenticate
-                    .requestMatchers("/api/auth/login").permitAll()
-                    .anyRequest().authenticated()
-
-            ).addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-             .sessionManagement(session -> session
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/test").permitAll()
+                        .requestMatchers("/api/admin/dashboard/stats").authenticated() // ← Cambiar esto
+                        .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-             );
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -61,10 +63,11 @@ public class WebSecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
-                "http://localhost:3001",
-                "http://192.168.238.1:3000"
+                "http://127.0.0.1:3000"
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
+        ));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
@@ -73,4 +76,9 @@ public class WebSecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
+
+
+
+
 }

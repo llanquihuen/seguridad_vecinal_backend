@@ -3,6 +3,7 @@ package cl.seguridad.vecinal.controller;
 import cl.seguridad.vecinal.dao.UsuarioRepository;
 import cl.seguridad.vecinal.modelo.Usuario;
 import cl.seguridad.vecinal.modelo.dto.*;
+import cl.seguridad.vecinal.security.JwtTokenUtil;
 import cl.seguridad.vecinal.service.AuthService;
 import cl.seguridad.vecinal.service.GoogleAuthService;
 import cl.seguridad.vecinal.service.RefreshTokenService;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import cl.seguridad.vecinal.modelo.Role;
 
 import java.util.Map;
 
@@ -31,6 +33,9 @@ public class AuthController {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest req) {
@@ -60,9 +65,43 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@RequestBody RefreshRequest request, HttpServletRequest httpReq) {
-        var pair = refreshTokenService.rotate(request.getRefreshToken(), httpReq.getHeader("User-Agent"), httpReq.getRemoteAddr());
-        return ResponseEntity.ok(new AuthResponse(pair.accessToken(), pair.refreshToken(), pair.username(), pair.role(), pair.isAdmin()));
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> request) {
+        try {
+            String refreshToken = request.get("refreshToken");
+
+            if (refreshToken == null || refreshToken.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Refresh token es requerido",
+                        "code", "MISSING_REFRESH_TOKEN"
+                ));
+            }
+
+            // Validar que el token no esté expirado y obtener el username
+            String username = jwtTokenUtil.getUsernameFromToken(refreshToken);
+
+            Usuario usuario = usuarioRepository.findByEmail(username)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            // Generar nuevo access token
+            String newAccessToken = jwtTokenUtil.generateAccessToken(
+                    username,
+                    Map.of(
+                            "role", usuario.getRole().name(),
+                            "isAdmin", usuario.getRole() == Role.SUPER_ADMIN || usuario.getRole() == Role.ADMIN_VILLA
+                    )
+            );
+
+            return ResponseEntity.ok(Map.of(
+                    "accessToken", newAccessToken,
+                    "message", "Token renovado exitosamente"
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "error", "Refresh token inválido o expirado",
+                    "code", "INVALID_REFRESH_TOKEN"
+            ));
+        }
     }
 
     @PostMapping("/logout")

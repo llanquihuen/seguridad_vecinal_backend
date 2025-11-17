@@ -39,4 +39,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario,Integer> {
     // Obtener sectores únicos
     @Query("SELECT DISTINCT u.sector FROM Usuario u WHERE u.sector IS NOT NULL AND u.sector <> ''")
     List<String> findDistinctSectores();
+
+    // Contar usuarios verificados (AGREGAR EN LA INTERFACE)
+    long countByVerificadoTrue();
 }

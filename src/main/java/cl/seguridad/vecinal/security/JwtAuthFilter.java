@@ -35,14 +35,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt)) {
-                // Ignore refresh tokens (they carry a jti)
-                String possibleJti = null;
-                try { possibleJti = jwtTokenUtil.getJti(jwt); } catch (Exception ignored) {}
-                if (possibleJti != null) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-
                 String username = jwtTokenUtil.getUsernameFromToken(jwt);
 
                 if (StringUtils.hasText(username)

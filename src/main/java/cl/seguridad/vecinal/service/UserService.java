@@ -273,4 +273,15 @@ public class UserService {
     public Page<Usuario> getUsersBySector(String sector, Pageable pageable) {
         return usuarioRepository.findBySector(sector, pageable);
     }
+
+    // Contar todos los usuarios
+    public long countAllUsers() {
+        return usuarioRepository.count();
+    }
+
+    // Contar usuarios verificados
+    public long countVerifiedUsers() {
+        return usuarioRepository.countByVerificadoTrue();
+    }
+
 }

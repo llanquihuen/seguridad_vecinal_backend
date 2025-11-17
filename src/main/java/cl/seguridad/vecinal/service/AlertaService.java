@@ -162,19 +162,32 @@ public class AlertaService {
             this.hoy = hoy;
         }
     }
-    // ========== MÉTODOS PARA OBTENER ALERTAS POR SECTOR ==========
+
+// ========== MÉTODOS PARA ESTADÍSTICAS DEL DASHBOARD ==========
 
     /**
-     * Obtener alertas por sector (solo activas por defecto)
+     * Contar alertas por estado
+     * @param estado Estado de la alerta (ACTIVA, EN_PROCESO, ATENDIDA)
+     * @return Cantidad de alertas en ese estado
      */
-    public List<Alerta> obtenerAlertasPorSector(String sector) {
-        return alertaRepository.findBySectorAndEstadoOrderByFechaHoraDesc(sector, EstadoAlerta.ACTIVA);
+    public long countAlertasByEstado(EstadoAlerta estado) {
+        return alertaRepository.countByEstado(estado);
     }
 
     /**
-     * Obtener alertas por sector y estado específico
+     * Contar alertas creadas hoy
+     * @return Cantidad de alertas de hoy
      */
-    public List<Alerta> obtenerAlertasPorSector(String sector, EstadoAlerta estado) {
-        return alertaRepository.findBySectorAndEstadoOrderByFechaHoraDesc(sector, estado);
+    public long countAlertasHoy() {
+        return alertaRepository.countAlertasHoy();
     }
+
+    /**
+     * Obtener las últimas 5 alertas para mostrar en actividad reciente
+     * @return Lista de las 5 alertas más recientes
+     */
+    public List<Alerta> findTop5RecentAlertas() {
+        return alertaRepository.findTop5ByOrderByFechaHoraDesc();
+    }
+
 }
