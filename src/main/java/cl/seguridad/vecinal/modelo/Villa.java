@@ -1,4 +1,5 @@
 package cl.seguridad.vecinal.modelo;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
@@ -6,7 +7,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Setter
@@ -32,9 +36,7 @@ public class Villa {
     @Column(name = "codigo_postal", length = 10)
     private String codigoPostal;
 
-    // Permite dígitos, espacios y símbolos comunes de teléfono
     @Size(max = 15)
-    //@Pattern(regexp = "^[0-9()+\\-\\s]{0,15}$", message = "Teléfono inválido")
     @Column(name = "telefono_contacto", length = 15)
     private String telefonoContacto;
 
@@ -47,6 +49,44 @@ public class Villa {
     private LocalDateTime fechaCreacion;
 
     @Column(name = "activo", nullable = false)
-   // @Builder.Default
     private Boolean activo = true;
+
+    // ✅ NUEVA RELACIÓN CON COMUNA
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "comuna_id", nullable = false)
+    private Comuna comuna;
+
+    // ✅ LISTA DE SECTORES (guardados como JSON o texto separado por comas)
+    @Column(name = "sectores", length = 500)
+    private String sectores; // Ej: "Sector A,Sector B,Sector C,Sector Norte,Sector Sur"
+
+    @OneToMany(mappedBy = "villa", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Usuario> usuarios = new ArrayList<>();
+
+    // Métodos auxiliares
+    @Transient
+    public String getComunaNombre() {
+        return comuna != null ? comuna.getNombre() : null;
+    }
+
+    @Transient
+    public String getCiudadNombre() {
+        return comuna != null && comuna.getCiudad() != null ? comuna.getCiudad().getNombre() : null;
+    }
+
+    @Transient
+    public List<String> getSectoresList() {
+        if (sectores == null || sectores.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return List.of(sectores.split(","));
+    }
+
+    public void setSectoresList(List<String> sectoresList) {
+        if (sectoresList == null || sectoresList.isEmpty()) {
+            this.sectores = null;
+        } else {
+            this.sectores = String.join(",", sectoresList);
+        }
+    }
 }

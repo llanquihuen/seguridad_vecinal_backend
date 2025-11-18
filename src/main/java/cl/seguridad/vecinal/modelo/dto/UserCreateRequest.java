@@ -40,6 +40,8 @@ public class UserCreateRequest {
     @Size(max = 50, message = "El sector no puede exceder 50 caracteres")
     private String sector;
 
+    private Long villaId;
+
     // Constructor vacío
     public UserCreateRequest() {}
 
@@ -132,6 +134,9 @@ public class UserCreateRequest {
 
     public String getSector() { return sector; }
     public void setSector(String sector) { this.sector = sector; }
+
+    public Long getVillaId() { return villaId; }
+    public void setVillaId(Long villaId) { this.villaId = villaId; }
 
     @Override
     public String toString() {

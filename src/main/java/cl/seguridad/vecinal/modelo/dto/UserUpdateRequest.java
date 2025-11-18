@@ -27,6 +27,7 @@ public class UserUpdateRequest {
     private Float latitud;
     private Float longitud;
     private Role role;
+    private String sector;
 
     // Constructor vacío
     public UserUpdateRequest() {}
@@ -118,6 +119,10 @@ public class UserUpdateRequest {
         this.role = role;
     }
 
+    public void setSector(String sector) {
+        this.sector = sector;
+    }
+
     @Override
     public String toString() {
         return "UserUpdateRequest{" +
@@ -126,7 +131,12 @@ public class UserUpdateRequest {
                 ", email='" + email + '\'' +
                 ", rut='" + rut + '\'' +
                 ", direccion='" + direccion + '\'' +
-                ", role=" + role +
+                ", role=" + role + '\'' +
+                ", sector=" + sector +
                 '}';
+    }
+
+    public String getSector() {
+        return sector;
     }
 }

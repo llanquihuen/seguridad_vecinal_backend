@@ -86,8 +86,23 @@ public class AuthService {
                 request.getRemoteAddr()
         );
         String role = user.getRole() != null ? user.getRole().name() : null;
-        Boolean isAdmin = user.getRole() != null && "ADMIN".equals(user.getRole().name());
-        return new AuthResponse(pair.accessToken(), pair.refreshToken(), user.getEmail(), role, isAdmin);
+        Boolean isAdmin = user.getRole() != null &&
+                (user.getRole() == Role.SUPER_ADMIN || user.getRole() == Role.ADMIN_VILLA);
+
+        // ✅ INCLUIR DATOS DE VILLA
+        return new AuthResponse(
+                pair.accessToken(),
+                pair.refreshToken(),
+                user.getEmail(),
+                role,
+                isAdmin,
+                user.getSector(),
+                user.getUsuarioId(),
+                user.getVillaId(),        // ✅ AGREGAR
+                user.getVillaNombre(),    // ✅ AGREGAR
+                user.getNombre(),         // ✅ AGREGAR
+                user.getApellido()        // ✅ AGREGAR
+        );
     }
 
 }

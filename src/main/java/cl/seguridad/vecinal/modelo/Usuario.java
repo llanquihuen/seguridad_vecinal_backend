@@ -18,12 +18,16 @@ public class Usuario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer usuarioId;
+
     private String nombre;
     private String apellido;
+
     @Column(unique = true)
     private String email;
+
     @Column(unique = true)
     private String rut;
+
     private String password;
     private boolean estadoCuenta;
     private LocalDate fechaRegistro;
@@ -36,17 +40,28 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    // AGREGAR estos nuevos campos:
-    private Long villaId;
+    // ✅ RELACIÓN CON VILLA (CORREGIDA)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "villa_id", referencedColumnName = "villa_id")
+    private Villa villa;
+
+    // ✅ SECTOR DENTRO DE LA VILLA
     private String sector;
 
-    // Lombok generará automáticamente los getters/setters
-    // pero si no usas Lombok, agrega manualmente:
-    /*
-    public Long getVillaId() { return villaId; }
-    public void setVillaId(Long villaId) { this.villaId = villaId; }
-    
-    public String getSector() { return sector; }
-    public void setSector(String sector) { this.sector = sector; }
-    */
+    // ✅ MÉTODOS AUXILIARES (TRANSIENT - no se mapean en BD)
+    @Transient
+    public Long getVillaId() {
+        return villa != null ? villa.getId() : null;
+    }
+
+    @Transient
+    public String getVillaNombre() {
+        return villa != null ? villa.getNombre() : null;
+    }
+
+    // ✅ Este método es para cuando se asigna villa desde el DTO
+    public void setVillaId(Long villaId) {
+        // Este método se deja vacío intencionalmente
+        // La villa se asigna directamente con setVilla()
+    }
 }
