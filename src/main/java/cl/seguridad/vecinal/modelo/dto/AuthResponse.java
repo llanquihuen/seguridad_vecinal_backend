@@ -17,6 +17,19 @@ public class AuthResponse {
     // Constructor vacío
     public AuthResponse() {}
 
+    public AuthResponse(String accessToken, String refreshToken, String username) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.username = username;
+    }
+
+    public AuthResponse(String accessToken, String refreshToken, String username, String role, Boolean isAdmin) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.username = username;
+        this.role = role;
+        this.isAdmin = isAdmin;
+    }
     // ✅ Constructor COMPLETO (actualizado)
     public AuthResponse(String accessToken, String refreshToken, String email,
                         String role, Boolean isAdmin, String sector, Integer userId,
@@ -35,8 +48,6 @@ public class AuthResponse {
         this.apellido = apellido;
     }
 
-    public AuthResponse(String s, String s1, String email, String role, Boolean isAdmin) {
-    }
 
     // Getters y Setters
     public String getAccessToken() {
