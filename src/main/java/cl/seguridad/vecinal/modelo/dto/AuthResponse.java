@@ -35,6 +35,9 @@ public class AuthResponse {
         this.apellido = apellido;
     }
 
+    public AuthResponse(String s, String s1, String email, String role, Boolean isAdmin) {
+    }
+
     // Getters y Setters
     public String getAccessToken() {
         return accessToken;

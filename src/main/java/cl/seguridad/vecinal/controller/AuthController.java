@@ -4,8 +4,12 @@ import cl.seguridad.vecinal.dao.UsuarioRepository;
 import cl.seguridad.vecinal.modelo.Role;
 import cl.seguridad.vecinal.modelo.Usuario;
 import cl.seguridad.vecinal.modelo.dto.AuthResponse;
+import cl.seguridad.vecinal.modelo.dto.ErrorResponse;
+import cl.seguridad.vecinal.modelo.dto.GoogleLoginRequest;
 import cl.seguridad.vecinal.modelo.dto.LoginRequest;
 import cl.seguridad.vecinal.security.JwtTokenUtil;
+import cl.seguridad.vecinal.service.AuthService;
+import cl.seguridad.vecinal.service.GoogleAuthService;
 import cl.seguridad.vecinal.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +44,12 @@ public class AuthController {
 
     @Autowired
     private RefreshTokenService refreshTokenService;
+
+    @Autowired
+    private GoogleAuthService googleAuthService;
+
+    @Autowired
+    private AuthService authService;
 
     // ✅ LOGIN CON LOGS DETALLADOS
     @PostMapping("/login")
@@ -222,6 +232,49 @@ public class AuthController {
                     "error", "Error al renovar token: " + e.getMessage(),
                     "code", "REFRESH_ERROR"
             ));
+        }
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest body, HttpServletRequest httpReq) {
+        try {
+            Usuario user = googleAuthService.verifyOrCreateUser(body.getIdToken());
+            var pair = refreshTokenService.issuePair(user, httpReq.getHeader("User-Agent"), httpReq.getRemoteAddr());
+            String role = user.getRole() != null ? user.getRole().name() : null;
+            Boolean isAdmin = user.getRole() != null && "ADMIN".equals(user.getRole().name());
+            return ResponseEntity.ok(new AuthResponse(pair.accessToken(), pair.refreshToken(), user.getEmail(), role, isAdmin));
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            String msg = cause != null && cause.getMessage() != null ? cause.getMessage() : ex.getMessage();
+            if (msg == null) msg = "Error al validar el inicio de sesión con Google";
+
+            if (msg.contains("Usuario no registrado")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("USER_NOT_REGISTERED", "Usuario no registrado. Debe registrarse antes."));
+            }
+            if (msg.contains("Cuenta deshabilitada")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("ACCOUNT_DISABLED", "Usuario en espera de verificación. Contacte al administrador."));
+            }
+            if (msg.contains("ID Token de Google inválido") || msg.contains("Google clientId no coincide") || msg.contains("ID Token sin email")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("INVALID_ID_TOKEN", msg));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("GOOGLE_LOGIN_FAILED", "No se pudo validar el token de Google"));
+        }
+    }
+
+    @PostMapping("/register")
+    public  ResponseEntity<String> register(@RequestBody Usuario usuario){
+        if (authService.existUser(usuario)){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Usuario ya registrado");
+        }
+        try{
+            authService.registerUser(usuario);
+            return ResponseEntity.status(HttpStatus.CREATED).body("Usuario registrado con exito");
+        } catch (RuntimeException ex){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error al registrar usuario: " + ex.getMessage());
         }
     }
 }
