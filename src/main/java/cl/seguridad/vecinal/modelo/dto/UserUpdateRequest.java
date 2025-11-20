@@ -29,12 +29,16 @@ public class UserUpdateRequest {
     private Role role;
     private String sector;
 
+    // ✅ NUEVO: Soporte para actualizar villa
+    private Long villaId;
+
     // Constructor vacío
     public UserUpdateRequest() {}
 
     // Constructor completo
     public UserUpdateRequest(String nombre, String apellido, String email, String rut,
-                             String password, String direccion, Float latitud, Float longitud, Role role) {
+                             String password, String direccion, Float latitud, Float longitud,
+                             Role role, String sector, Long villaId) {
         this.nombre = nombre;
         this.apellido = apellido;
         this.email = email;
@@ -44,6 +48,8 @@ public class UserUpdateRequest {
         this.latitud = latitud;
         this.longitud = longitud;
         this.role = role;
+        this.sector = sector;
+        this.villaId = villaId;
     }
 
     // Getters y Setters
@@ -119,24 +125,20 @@ public class UserUpdateRequest {
         this.role = role;
     }
 
+    public String getSector() {
+        return sector;
+    }
+
     public void setSector(String sector) {
         this.sector = sector;
     }
 
-    @Override
-    public String toString() {
-        return "UserUpdateRequest{" +
-                "nombre='" + nombre + '\'' +
-                ", apellido='" + apellido + '\'' +
-                ", email='" + email + '\'' +
-                ", rut='" + rut + '\'' +
-                ", direccion='" + direccion + '\'' +
-                ", role=" + role + '\'' +
-                ", sector=" + sector +
-                '}';
+    // ✅ NUEVO: Getter y Setter para villaId
+    public Long getVillaId() {
+        return villaId;
     }
 
-    public String getSector() {
-        return sector;
+    public void setVillaId(Long villaId) {
+        this.villaId = villaId;
     }
 }

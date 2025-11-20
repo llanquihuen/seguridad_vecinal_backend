@@ -73,7 +73,7 @@ public class AuthController {
             System.out.println("   - Hash almacenado: " + usuario.getPassword().substring(0, 20) + "...");
 
             // ✅ VALIDACIÓN 1: Solo ADMIN_VILLA y SUPER_ADMIN pueden acceder al dashboard web
-            if (usuario.getRole() == Role.VECINO) {
+           /* if (usuario.getRole() == Role.VECINO) {
                 System.out.println("❌ VECINO intentó acceder al dashboard web");
                 System.out.println("========================================");
                 Map<String, Object> error = new HashMap<>();
@@ -81,7 +81,7 @@ public class AuthController {
                 error.put("code", "VECINO_NO_WEB_ACCESS");
                 error.put("message", "Los usuarios VECINO no tienen acceso al dashboard web. Por favor, usa la aplicación móvil.");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-            }
+            }*/
 
             // ✅ VALIDACIÓN 2: Verificar estadoCuenta (excepto SUPER_ADMIN)
             if (!usuario.isEstadoCuenta() && usuario.getRole() != Role.SUPER_ADMIN) {
