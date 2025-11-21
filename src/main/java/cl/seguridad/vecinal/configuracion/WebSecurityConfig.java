@@ -42,43 +42,33 @@ public class WebSecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // ========== ENDPOINTS PÚBLICOS (Sin autenticación) ==========
+                        // Endpoints públicos
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/api/debug/**").permitAll()
                         .requestMatchers("/api/hash/**").permitAll()
                         .requestMatchers("/api/admin/test").permitAll()
 
-                        // ✅ GEOGRAFÍA - PÚBLICO para registro de usuarios
-                        .requestMatchers("/api/geografia/**").permitAll()
+                        // ✅ AGREGAR: Geografía pública para registro de usuarios
+                        .requestMatchers("/api/geografia/ciudades").permitAll()
+                        .requestMatchers("/api/geografia/comunas").permitAll()
+                        .requestMatchers("/api/geografia/villas").permitAll()
+                        .requestMatchers("/api/geografia/villas/*/sectores").permitAll()
+                        .requestMatchers("/api/geografia/jerarquia").permitAll()  // Opcional
 
-                        // ✅ USUARIOS - Endpoints públicos para registro
-                        .requestMatchers("/api/usuarios/rut/**").permitAll()
-                        .requestMatchers("/api/users/findrut/**").permitAll()
-                        .requestMatchers("/api/usuarios/register").permitAll()
 
-                        // ========== ENDPOINTS PROTEGIDOS ==========
+
+                        // Endpoints protegidos
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
-                        .requestMatchers("/api/usuarios/**").authenticated()
+                        // ✅ ELIMINAR esta línea: .requestMatchers("/api/geografia/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
 
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        System.out.println("════════════════════════════════════════");
-        System.out.println("🔐 SECURITY CONFIGURATION LOADED");
-        System.out.println("════════════════════════════════════════");
-        System.out.println("✅ Endpoints públicos:");
-        System.out.println("   - /api/auth/** (login, Google, refresh)");
-        System.out.println("   - /api/geografia/** (jerarquía, ciudades, comunas)");
-        System.out.println("   - /api/usuarios/rut/** (verificación RUT)");
-        System.out.println("   - /api/usuarios/register (registro)");
-        System.out.println("════════════════════════════════════════");
-
         return http.build();
     }
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/geografia")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "*"})
 public class GeografiaController {
 
     @Autowired
@@ -272,6 +272,34 @@ public class GeografiaController {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", "Error al obtener jerarquía: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+    // En GeografiaController.java
+
+    @GetMapping("/registro")
+    public ResponseEntity<Map<String, Object>> getDataForRegistro() {
+        try {
+            // Obtener todo lo necesario para el registro en una sola llamada
+            List<Ciudad> ciudades = ciudadRepository.findByActivoTrue();
+
+            Map<String, Object> registroData = new HashMap<>();
+            registroData.put("ciudades", ciudades.stream().map(ciudad -> {
+                Map<String, Object> ciudadDto = new HashMap<>();
+                ciudadDto.put("id", ciudad.getId());
+                ciudadDto.put("nombre", ciudad.getNombre());
+                return ciudadDto;
+            }).collect(Collectors.toList()));
+
+            registroData.put("status", "success");
+            registroData.put("message", "Seleccione una ciudad para continuar");
+
+            return ResponseEntity.ok(registroData);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Error al obtener datos de registro: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }
