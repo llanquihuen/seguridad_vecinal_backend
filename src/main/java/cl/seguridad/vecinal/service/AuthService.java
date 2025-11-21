@@ -1,8 +1,10 @@
 package cl.seguridad.vecinal.service;
 
 import cl.seguridad.vecinal.dao.UsuarioRepository;
+import cl.seguridad.vecinal.dao.VillaRepository;
 import cl.seguridad.vecinal.modelo.Role;
 import cl.seguridad.vecinal.modelo.Usuario;
+import cl.seguridad.vecinal.modelo.Villa;
 import cl.seguridad.vecinal.modelo.dto.AuthResponse;
 import cl.seguridad.vecinal.modelo.dto.LoginRequest;
 import cl.seguridad.vecinal.security.JwtTokenUtil;
@@ -14,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 @Service
@@ -27,6 +30,8 @@ public class AuthService {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
     }
+    @Autowired
+    private VillaRepository villaRepository;
 
     public String authenticateLegacy(String email, String password) {
         Optional<Usuario> optUsuario = usuarioRepository.findByEmail(email);
@@ -50,15 +55,38 @@ public class AuthService {
     }
 
     public void registerUser(Usuario usuario) {
+        // 1. Hashear password
         String encodedPassword = passwordEncoder.encode(usuario.getPassword());
         usuario.setPassword(encodedPassword);
+
+        // 2. ✅ ASIGNAR VILLA SI villaId VIENE EN EL OBJETO
+
+        Long villaId = usuario.getVillaId();
+
+        if (villaId != null) {
+            Villa villa = villaRepository.findById(villaId)
+                    .orElseThrow(() -> new RuntimeException("Villa no encontrada con ID: " + villaId));
+            usuario.setVilla(villa);
+        }
+
+        // 3. ✅ ASEGURAR QUE fechaRegistro esté presente
+        if (usuario.getFechaRegistro() == null) {
+            usuario.setFechaRegistro(LocalDate.now());
+        }
+
+        // 4. ✅ ASEGURAR que estadoCuenta esté presente (default false para nuevos vecinos)
+        // Si viene del registro de app, debe ser verificado por admin
+        if (usuario.getRole() == null) {
+            usuario.setRole(Role.VECINO);
+        }
+
+        // 5. Guardar
         usuarioRepository.save(usuario);
     }
 
     public boolean existUser(Usuario usuario){
         return usuarioRepository.existsUsuarioByEmail(usuario.getEmail());
     }
-
     @Autowired
     private AuthenticationManager authenticationManager;
 
@@ -89,7 +117,6 @@ public class AuthService {
         Boolean isAdmin = user.getRole() != null &&
                 (user.getRole() == Role.SUPER_ADMIN || user.getRole() == Role.ADMIN_VILLA);
 
-        // ✅ INCLUIR DATOS DE VILLA
         return new AuthResponse(
                 pair.accessToken(),
                 pair.refreshToken(),
@@ -98,11 +125,10 @@ public class AuthService {
                 isAdmin,
                 user.getSector(),
                 user.getUsuarioId(),
-                user.getVillaId(),        // ✅ AGREGAR
-                user.getVillaNombre(),    // ✅ AGREGAR
-                user.getNombre(),         // ✅ AGREGAR
-                user.getApellido()        // ✅ AGREGAR
+                user.getVillaId(),
+                user.getVillaNombre(),
+                user.getNombre(),
+                user.getApellido()
         );
     }
-
 }

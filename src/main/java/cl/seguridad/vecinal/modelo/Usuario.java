@@ -1,6 +1,7 @@
 package cl.seguridad.vecinal.modelo;
 
-import cl.seguridad.vecinal.modelo.Role;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -40,28 +41,40 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    // ✅ RELACIÓN CON VILLA (CORREGIDA)
+    // ✅ RELACIÓN CON VILLA
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "villa_id", referencedColumnName = "villa_id")
+    @JsonIgnore // ✅ Ignorar la entidad completa en JSON
     private Villa villa;
 
     // ✅ SECTOR DENTRO DE LA VILLA
     private String sector;
 
-    // ✅ MÉTODOS AUXILIARES (TRANSIENT - no se mapean en BD)
+    // ✅ CAMPO TEMPORAL PARA RECIBIR villaId DEL JSON
     @Transient
+    private Long tempVillaId;
+
+    // ✅ GETTER PARA SERIALIZAR (Usuario → JSON)
+    // Se usa cuando ENVIAMOS el usuario como respuesta
+    @JsonProperty("villaId")
     public Long getVillaId() {
-        return villa != null ? villa.getId() : null;
+        if (villa != null) {
+            return villa.getId();
+        }
+        return tempVillaId;
     }
 
+    // ✅ SETTER PARA DESERIALIZAR (JSON → Usuario)
+    // Se usa cuando RECIBIMOS el JSON del registro
+    @JsonProperty("villaId")
+    public void setVillaId(Long villaId) {
+        this.tempVillaId = villaId;
+    }
+
+    // ✅ METODO AUXILIAR PARA OBTENER NOMBRE DE VILLA
     @Transient
+    @JsonProperty("villaNombre")
     public String getVillaNombre() {
         return villa != null ? villa.getNombre() : null;
-    }
-
-    // ✅ Este método es para cuando se asigna villa desde el DTO
-    public void setVillaId(Long villaId) {
-        // Este método se deja vacío intencionalmente
-        // La villa se asigna directamente con setVilla()
     }
 }

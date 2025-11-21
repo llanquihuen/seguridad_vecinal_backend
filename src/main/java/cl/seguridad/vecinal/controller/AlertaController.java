@@ -2,9 +2,8 @@
 package cl.seguridad.vecinal.controller;
 
 import cl.seguridad.vecinal.dao.AlertaRepository;
-import cl.seguridad.vecinal.modelo.Alerta;
-import cl.seguridad.vecinal.modelo.EstadoAlerta;
-import cl.seguridad.vecinal.modelo.TipoAlertaEnum;
+import cl.seguridad.vecinal.dao.UsuarioRepository;
+import cl.seguridad.vecinal.modelo.*;
 import cl.seguridad.vecinal.modelo.dto.AlertaCreateRequest;
 import cl.seguridad.vecinal.modelo.dto.AlertaResponseDto;
 import cl.seguridad.vecinal.service.AlertaService;
@@ -16,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -33,6 +34,9 @@ public class AlertaController {
 
     @Autowired
     private AlertaRepository alertaRepository;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
     // ========== CREAR ALERTA ==========
     @PostMapping("/crear")
@@ -410,6 +414,185 @@ public class AlertaController {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", "Error al obtener alertas del sector: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    // ========== ESTADÍSTICAS DE ALERTAS (PARA DASHBOARD) ==========
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getAlertasStats(
+            @RequestParam(required = false) Long villaId,
+            @RequestParam(required = false) String sector,
+            @RequestParam(required = false) String fechaInicio,
+            @RequestParam(required = false) String fechaFin) {
+
+        try {
+            // Obtener usuario actual
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = auth.getName();
+            Usuario currentUser = usuarioRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            // Determinar villaId según el rol
+            Long targetVillaId = null;
+            if (currentUser.getRole() == Role.ADMIN_VILLA) {
+                // ADMIN_VILLA solo puede ver stats de su villa
+                targetVillaId = currentUser.getVillaId();
+            } else if (currentUser.getRole() == Role.SUPER_ADMIN) {
+                // SUPER_ADMIN puede filtrar por villa o ver todo
+                targetVillaId = villaId;
+            }
+
+            // Parsear fechas
+            LocalDateTime startDate = fechaInicio != null ?
+                    LocalDateTime.parse(fechaInicio + "T00:00:00") :
+                    LocalDateTime.now().minusMonths(1); // Por defecto último mes
+
+            LocalDateTime endDate = fechaFin != null ?
+                    LocalDateTime.parse(fechaFin + "T23:59:59") :
+                    LocalDateTime.now();
+
+            // Obtener alertas filtradas
+            List<Alerta> alertas;
+            if (targetVillaId != null && sector != null) {
+                alertas = alertaRepository.findByVillaIdAndSectorAndFechaHoraBetween(
+                        targetVillaId, sector, startDate, endDate);
+            } else if (targetVillaId != null) {
+                alertas = alertaRepository.findByVillaIdAndFechaHoraBetween(
+                        targetVillaId, startDate, endDate);
+            } else if (sector != null) {
+                alertas = alertaRepository.findBySectorAndFechaHoraBetween(
+                        sector, startDate, endDate);
+            } else {
+                alertas = alertaRepository.findByFechaHoraBetween(startDate, endDate);
+            }
+
+            // ✅ CALCULAR ESTADÍSTICAS
+            Map<String, Object> stats = new HashMap<>();
+
+            // Total de alertas
+            stats.put("totalAlertas", alertas.size());
+
+            // Alertas por tipo
+            Map<String, Long> porTipo = alertas.stream()
+                    .collect(Collectors.groupingBy(
+                            a -> a.getTipo().name(),
+                            Collectors.counting()
+                    ));
+            stats.put("alertasPorTipo", porTipo);
+
+            // Alertas por estado
+            Map<String, Long> porEstado = alertas.stream()
+                    .collect(Collectors.groupingBy(
+                            a -> a.getEstado().name(),
+                            Collectors.counting()
+                    ));
+            stats.put("alertasPorEstado", porEstado);
+
+            // Alertas por día (últimos 7 días)
+            Map<String, Long> porDia = alertas.stream()
+                    .filter(a -> a.getFechaHora().isAfter(LocalDateTime.now().minusDays(7)))
+                    .collect(Collectors.groupingBy(
+                            a -> a.getFechaHora().toLocalDate().toString(),
+                            Collectors.counting()
+                    ));
+            stats.put("alertasPorDia", porDia);
+
+            // Alertas por sector (top 5)
+            Map<String, Long> porSector = alertas.stream()
+                    .filter(a -> a.getSector() != null)
+                    .collect(Collectors.groupingBy(
+                            Alerta::getSector,
+                            Collectors.counting()
+                    ));
+
+            List<Map<String, Object>> topSectores = porSector.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .limit(5)
+                    .map(entry -> {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("sector", entry.getKey());
+                        item.put("cantidad", entry.getValue());
+                        return item;
+                    })
+                    .collect(Collectors.toList());
+            stats.put("topSectores", topSectores);
+
+            // Alertas por hora del día
+            Map<Integer, Long> porHora = alertas.stream()
+                    .collect(Collectors.groupingBy(
+                            a -> a.getFechaHora().getHour(),
+                            Collectors.counting()
+                    ));
+            stats.put("alertasPorHora", porHora);
+
+            // Porcentaje de alertas silenciosas
+            long silenciosas = alertas.stream()
+                    .filter(Alerta::getSilenciosa)
+                    .count();
+            double porcentajeSilenciosas = alertas.isEmpty() ? 0 :
+                    (silenciosas * 100.0) / alertas.size();
+            stats.put("porcentajeSilenciosas", Math.round(porcentajeSilenciosas * 100.0) / 100.0);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("stats", stats);
+            response.put("filtros", Map.of(
+                    "villaId", targetVillaId != null ? targetVillaId : "todas",
+                    "sector", sector != null ? sector : "todos",
+                    "fechaInicio", startDate.toString(),
+                    "fechaFin", endDate.toString()
+            ));
+            response.put("status", "success");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Error al obtener estadísticas: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+// ========== ALERTAS RECIENTES PARA DASHBOARD ==========
+
+    @GetMapping("/recientes-dashboard")
+    public ResponseEntity<Map<String, Object>> getAlertasRecientes(
+            @RequestParam(defaultValue = "10") int limit) {
+
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = auth.getName();
+            Usuario currentUser = usuarioRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            PageRequest pageRequest = PageRequest.of(0, limit, Sort.by("fechaHora").descending());
+
+            Page<Alerta> alertasPage;
+            if (currentUser.getRole() == Role.ADMIN_VILLA) {
+                // ADMIN_VILLA solo ve alertas de su villa
+                alertasPage = alertaRepository.findByVillaId(currentUser.getVillaId(), pageRequest);
+            } else {
+                // SUPER_ADMIN ve todas
+                alertasPage = alertaRepository.findAll(pageRequest);
+            }
+
+            List<AlertaResponseDto> alertas = alertasPage.getContent().stream()
+                    .map(AlertaResponseDto::new)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("alertas", alertas);
+            response.put("total", alertasPage.getTotalElements());
+            response.put("status", "success");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Error al obtener alertas recientes: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }
