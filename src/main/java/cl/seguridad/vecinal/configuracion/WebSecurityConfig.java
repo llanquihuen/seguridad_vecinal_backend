@@ -34,6 +34,7 @@ public class WebSecurityConfig {
     private PasswordEncoder passwordEncoder;
 
     @Bean
+
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -56,11 +57,18 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/geografia/villas").permitAll()
                         .requestMatchers("/api/geografia/villas/*/sectores").permitAll()
                         .requestMatchers("/api/geografia/jerarquia").permitAll()  // Opcional
-
-
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/google",
+                                "/api/auth/refresh",
+                                "/api/test/**",
+                                "/api/geografia/**"
+                        ).permitAll()
 
                         // Endpoints protegidos
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
+                        .requestMatchers("/api/alertas/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
                         // ✅ ELIMINAR esta línea: .requestMatchers("/api/geografia/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
 
                         .anyRequest().authenticated()
