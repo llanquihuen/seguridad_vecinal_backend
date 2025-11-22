@@ -20,6 +20,10 @@ public class UserResponseDto {
     private Role role;
     private String sector;
 
+    // ✅ AGREGADOS: villaId y villaNombre
+    private Long villaId;
+    private String villaNombre;
+
     // Constructor vacío
     public UserResponseDto() {}
 
@@ -39,12 +43,17 @@ public class UserResponseDto {
         this.tokenVerificacion = usuario.getTokenVerificacion();
         this.role = usuario.getRole();
         this.sector = usuario.getSector();
+
+        // ✅ NUEVO: Incluir villa en respuesta
+        this.villaId = usuario.getVillaId();
+        this.villaNombre = usuario.getVillaNombre();
     }
 
     // Constructor completo
     public UserResponseDto(Integer usuarioId, String nombre, String apellido, String email, String rut,
                            boolean estadoCuenta, LocalDate fechaRegistro, String direccion, Float latitud,
-                           Float longitud, boolean verificado, String tokenVerificacion, Role role) {
+                           Float longitud, boolean verificado, String tokenVerificacion, Role role,
+                           String sector, Long villaId, String villaNombre) {
         this.usuarioId = usuarioId;
         this.nombre = nombre;
         this.apellido = apellido;
@@ -58,7 +67,9 @@ public class UserResponseDto {
         this.verificado = verificado;
         this.tokenVerificacion = tokenVerificacion;
         this.role = role;
-
+        this.sector = sector;
+        this.villaId = villaId;
+        this.villaNombre = villaNombre;
     }
 
     // Getters y Setters
@@ -166,8 +177,30 @@ public class UserResponseDto {
         this.role = role;
     }
 
-    public String getSector() { return sector; }
-    public void setSector(String sector) { this.sector = sector; }
+    public String getSector() {
+        return sector;
+    }
+
+    public void setSector(String sector) {
+        this.sector = sector;
+    }
+
+    // ✅ NUEVO: Getters y Setters para villaId y villaNombre
+    public Long getVillaId() {
+        return villaId;
+    }
+
+    public void setVillaId(Long villaId) {
+        this.villaId = villaId;
+    }
+
+    public String getVillaNombre() {
+        return villaNombre;
+    }
+
+    public void setVillaNombre(String villaNombre) {
+        this.villaNombre = villaNombre;
+    }
 
     // Métodos de utilidad
     public String getNombreCompleto() {
@@ -195,6 +228,9 @@ public class UserResponseDto {
                 ", direccion='" + direccion + '\'' +
                 ", verificado=" + verificado +
                 ", role=" + role +
+                ", sector='" + sector + '\'' +
+                ", villaId=" + villaId +
+                ", villaNombre='" + villaNombre + '\'' +
                 '}';
     }
 }

@@ -1,5 +1,6 @@
-package cl.seguridad.vecinal.security;
+package cl.seguridad.vecinal.configuracion;  // ✅ CORREGIDO: Coincide con la carpeta
 
+import cl.seguridad.vecinal.security.JwtAuthFilter;  // ✅ Import correcto
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,7 @@ public class WebSecurityConfig {
     private PasswordEncoder passwordEncoder;
 
     @Bean
+
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -43,14 +45,31 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints públicos
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/register").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
-                        .requestMatchers("/api/debug/**").permitAll()  // ← NUEVO
-                        .requestMatchers("/api/hash/**").permitAll()   // ← NUEVO
+                        .requestMatchers("/api/debug/**").permitAll()
+                        .requestMatchers("/api/hash/**").permitAll()
                         .requestMatchers("/api/admin/test").permitAll()
+
+                        // ✅ AGREGAR: Geografía pública para registro de usuarios
+                        .requestMatchers("/api/geografia/ciudades").permitAll()
+                        .requestMatchers("/api/geografia/comunas").permitAll()
+                        .requestMatchers("/api/geografia/villas").permitAll()
+                        .requestMatchers("/api/geografia/villas/*/sectores").permitAll()
+                        .requestMatchers("/api/geografia/jerarquia").permitAll()  // Opcional
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/google",
+                                "/api/auth/refresh",
+                                "/api/test/**",
+                                "/api/geografia/**"
+                        ).permitAll()
 
                         // Endpoints protegidos
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
-                        .requestMatchers("/api/geografia/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
+                       // .requestMatchers("/api/alertas/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
+                        // ✅ ELIMINAR esta línea: .requestMatchers("/api/geografia/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
 
                         .anyRequest().authenticated()
                 )
@@ -59,13 +78,14 @@ public class WebSecurityConfig {
 
         return http.build();
     }
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:3001",
+                "http://10.0.2.2:3000",  // ✅ Android emulator
+                "http://10.0.2.2:3001",  // ✅ Android emulator
                 "https://seguridadvecinalchile.cl"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

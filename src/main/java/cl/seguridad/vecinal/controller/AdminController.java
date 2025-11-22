@@ -401,4 +401,18 @@ public class AdminController {
 
         return ResponseEntity.ok(response);
     }
+
+    // En AdminController.java, agregar:
+
+    @GetMapping("/users/check-rut")
+    public ResponseEntity<Map<String, Object>> checkRutExists(@RequestParam String rut) {
+        boolean exists = userService.checkRut(rut);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("exists", exists);
+        response.put("rut", rut);
+        response.put("status", "success");
+
+        return ResponseEntity.ok(response);
+    }
 }

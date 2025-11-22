@@ -72,6 +72,40 @@ public interface AlertaRepository extends JpaRepository<Alerta, Integer> {
     // Obtener últimas 5 alertas
     List<Alerta> findTop5ByOrderByFechaHoraDesc();
 
+
+    // ✅ MÉTODOS PARA ESTADÍSTICAS
+
+    // Buscar por villa y rango de fechas
+    @Query("SELECT a FROM Alerta a WHERE a.usuario.villa.id = :villaId " +
+            "AND a.fechaHora BETWEEN :inicio AND :fin")
+    List<Alerta> findByVillaIdAndFechaHoraBetween(
+            @Param("villaId") Long villaId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin
+    );
+
+    // Buscar por villa, sector y rango de fechas
+    @Query("SELECT a FROM Alerta a WHERE a.usuario.villa.id = :villaId " +
+            "AND a.sector = :sector AND a.fechaHora BETWEEN :inicio AND :fin")
+    List<Alerta> findByVillaIdAndSectorAndFechaHoraBetween(
+            @Param("villaId") Long villaId,
+            @Param("sector") String sector,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin
+    );
+
+    // Buscar por sector y rango de fechas
+    List<Alerta> findBySectorAndFechaHoraBetween(
+            String sector,
+            LocalDateTime inicio,
+            LocalDateTime fin
+    );
+
+    // Buscar por villa con paginación
+    @Query("SELECT a FROM Alerta a WHERE a.usuario.villa.id = :villaId")
+    Page<Alerta> findByVillaId(@Param("villaId") Long villaId, Pageable pageable);
+
+
     }
 
 

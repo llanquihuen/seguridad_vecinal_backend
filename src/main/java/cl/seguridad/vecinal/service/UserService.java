@@ -113,6 +113,9 @@ public class UserService {
     }
 
     // ✅ Actualizar usuario (con validación de permisos)
+
+
+    // ✅ Actualizar usuario (con validación de permisos y soporte para villaId)
     public Usuario updateUser(Integer id, UserUpdateRequest request, Usuario currentUser) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -140,7 +143,7 @@ public class UserService {
             usuario.setRut(request.getRut());
         }
 
-        // Actualizar campos
+        // Actualizar campos básicos
         if (request.getNombre() != null && !request.getNombre().trim().isEmpty()) {
             usuario.setNombre(request.getNombre());
         }
@@ -158,6 +161,18 @@ public class UserService {
         }
         if (request.getSector() != null) {
             usuario.setSector(request.getSector());
+        }
+
+        // ✅ ACTUALIZAR VILLA (si se proporciona) - NUEVO
+        if (request.getVillaId() != null) {
+            // Solo SUPER_ADMIN puede cambiar villa de usuarios
+            if (currentUser.getRole() != Role.SUPER_ADMIN) {
+                throw new RuntimeException("Solo SUPER_ADMIN puede cambiar la villa de usuarios");
+            }
+
+            Villa villa = villaRepository.findById(request.getVillaId())
+                    .orElseThrow(() -> new RuntimeException("Villa no encontrada con ID: " + request.getVillaId()));
+            usuario.setVilla(villa);
         }
 
         // ✅ SOLO SUPER_ADMIN PUEDE CAMBIAR ROLES
