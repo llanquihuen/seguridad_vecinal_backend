@@ -68,7 +68,7 @@ public class WebSecurityConfig {
 
                         // Endpoints protegidos
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
-                        .requestMatchers("/api/alertas/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
+                       // .requestMatchers("/api/alertas/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
                         // ✅ ELIMINAR esta línea: .requestMatchers("/api/geografia/**").hasAnyRole("SUPER_ADMIN", "ADMIN_VILLA")
 
                         .anyRequest().authenticated()
