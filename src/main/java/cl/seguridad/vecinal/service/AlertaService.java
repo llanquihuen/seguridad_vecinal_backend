@@ -53,9 +53,9 @@ public class AlertaService {
         alerta.setLatitud(request.getLatitud());
         alerta.setLongitud(request.getLongitud());
         alerta.setDireccion(request.getDireccion());
-        alerta.setSector(request.getSector());
-        alerta.setComuna(request.getComuna());
-        alerta.setCiudad(request.getCiudad());
+        alerta.setSector(usuario.getSector());          // ← Del usuario en BD
+        alerta.setComuna(usuario.getComunaNombre());    // ← "San Bernardo"
+        alerta.setCiudad(usuario.getCiudadNombre());    // ← "Santiago"
         alerta.setSilenciosa(request.getSilenciosa() != null ? request.getSilenciosa() : false);
         alerta.setEstado(EstadoAlerta.ACTIVA);
         alerta.setFechaHora(LocalDateTime.now());
