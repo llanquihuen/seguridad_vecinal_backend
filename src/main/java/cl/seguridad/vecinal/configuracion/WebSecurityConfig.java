@@ -56,6 +56,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/geografia/comunas").permitAll()
                         .requestMatchers("/api/geografia/villas").permitAll()
                         .requestMatchers("/api/geografia/villas/*/sectores").permitAll()
+                        .requestMatchers("/api/alertas/**").permitAll()
                         .requestMatchers("/api/geografia/jerarquia").permitAll()  // Opcional
                         .requestMatchers(
                                 "/api/auth/login",

@@ -2,8 +2,17 @@ package cl.seguridad.vecinal.modelo.dto;
 
 import cl.seguridad.vecinal.modelo.Role;
 import cl.seguridad.vecinal.modelo.Usuario;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDate;
 
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserResponseDto {
     private Integer usuarioId;
     private String nombre;
@@ -20,12 +29,14 @@ public class UserResponseDto {
     private Role role;
     private String sector;
 
-    // ✅ AGREGADOS: villaId y villaNombre
     private Long villaId;
     private String villaNombre;
 
-    // Constructor vacío
-    public UserResponseDto() {}
+    private Long comunaId;
+    private String comunaNombre;
+
+    private Long ciudadId;
+    private String ciudadNombre;
 
     // Constructor desde entidad Usuario
     public UserResponseDto(Usuario usuario) {
@@ -47,160 +58,12 @@ public class UserResponseDto {
         // ✅ NUEVO: Incluir villa en respuesta
         this.villaId = usuario.getVillaId();
         this.villaNombre = usuario.getVillaNombre();
+        this.comunaId = usuario.getComunaId();
+        this.comunaNombre = usuario.getComunaNombre();
+        this.ciudadId = usuario.getCiudadId();
+        this.ciudadNombre = usuario.getCiudadNombre();
     }
 
-    // Constructor completo
-    public UserResponseDto(Integer usuarioId, String nombre, String apellido, String email, String rut,
-                           boolean estadoCuenta, LocalDate fechaRegistro, String direccion, Float latitud,
-                           Float longitud, boolean verificado, String tokenVerificacion, Role role,
-                           String sector, Long villaId, String villaNombre) {
-        this.usuarioId = usuarioId;
-        this.nombre = nombre;
-        this.apellido = apellido;
-        this.email = email;
-        this.rut = rut;
-        this.estadoCuenta = estadoCuenta;
-        this.fechaRegistro = fechaRegistro;
-        this.direccion = direccion;
-        this.latitud = latitud;
-        this.longitud = longitud;
-        this.verificado = verificado;
-        this.tokenVerificacion = tokenVerificacion;
-        this.role = role;
-        this.sector = sector;
-        this.villaId = villaId;
-        this.villaNombre = villaNombre;
-    }
-
-    // Getters y Setters
-    public Integer getUsuarioId() {
-        return usuarioId;
-    }
-
-    public void setUsuarioId(Integer usuarioId) {
-        this.usuarioId = usuarioId;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public String getApellido() {
-        return apellido;
-    }
-
-    public void setApellido(String apellido) {
-        this.apellido = apellido;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getRut() {
-        return rut;
-    }
-
-    public void setRut(String rut) {
-        this.rut = rut;
-    }
-
-    public boolean isEstadoCuenta() {
-        return estadoCuenta;
-    }
-
-    public void setEstadoCuenta(boolean estadoCuenta) {
-        this.estadoCuenta = estadoCuenta;
-    }
-
-    public LocalDate getFechaRegistro() {
-        return fechaRegistro;
-    }
-
-    public void setFechaRegistro(LocalDate fechaRegistro) {
-        this.fechaRegistro = fechaRegistro;
-    }
-
-    public String getDireccion() {
-        return direccion;
-    }
-
-    public void setDireccion(String direccion) {
-        this.direccion = direccion;
-    }
-
-    public Float getLatitud() {
-        return latitud;
-    }
-
-    public void setLatitud(Float latitud) {
-        this.latitud = latitud;
-    }
-
-    public Float getLongitud() {
-        return longitud;
-    }
-
-    public void setLongitud(Float longitud) {
-        this.longitud = longitud;
-    }
-
-    public boolean isVerificado() {
-        return verificado;
-    }
-
-    public void setVerificado(boolean verificado) {
-        this.verificado = verificado;
-    }
-
-    public String getTokenVerificacion() {
-        return tokenVerificacion;
-    }
-
-    public void setTokenVerificacion(String tokenVerificacion) {
-        this.tokenVerificacion = tokenVerificacion;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public String getSector() {
-        return sector;
-    }
-
-    public void setSector(String sector) {
-        this.sector = sector;
-    }
-
-    // ✅ NUEVO: Getters y Setters para villaId y villaNombre
-    public Long getVillaId() {
-        return villaId;
-    }
-
-    public void setVillaId(Long villaId) {
-        this.villaId = villaId;
-    }
-
-    public String getVillaNombre() {
-        return villaNombre;
-    }
-
-    public void setVillaNombre(String villaNombre) {
-        this.villaNombre = villaNombre;
-    }
 
     // Métodos de utilidad
     public String getNombreCompleto() {
