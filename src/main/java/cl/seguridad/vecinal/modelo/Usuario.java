@@ -77,4 +77,61 @@ public class Usuario {
     public String getVillaNombre() {
         return villa != null ? villa.getNombre() : null;
     }
+
+    // ========== COMUNA (NUEVA) ==========
+
+    /**
+     * Obtiene el ID de la comuna desde la jerarquía Villa -> Comuna
+     * Esto se serializa automáticamente en el JSON como "comunaId"
+     */
+    @Transient
+    @JsonProperty("comunaId")
+    public Long getComunaId() {
+        if (villa != null && villa.getComuna() != null) {
+            return villa.getComuna().getId();
+        }
+        return null;
+    }
+
+    /**
+     * Obtiene el nombre de la comuna desde la jerarquía Villa -> Comuna
+     * Esto se serializa automáticamente en el JSON como "comunaNombre"
+     */
+    @Transient
+    @JsonProperty("comunaNombre")
+    public String getComunaNombre() {
+        if (villa != null && villa.getComuna() != null) {
+            return villa.getComuna().getNombre();
+        }
+        return null;
+    }
+
+    // ========== CIUDAD (NUEVA) ==========
+
+    /**
+     * Obtiene el ID de la ciudad desde la jerarquía Villa -> Comuna -> Ciudad
+     * Esto se serializa automáticamente en el JSON como "ciudadId"
+     */
+    @Transient
+    @JsonProperty("ciudadId")
+    public Long getCiudadId() {
+        if (villa != null && villa.getComuna() != null && villa.getComuna().getCiudad() != null) {
+            return villa.getComuna().getCiudad().getId();
+        }
+        return null;
+    }
+
+    /**
+     * Obtiene el nombre de la ciudad desde la jerarquía Villa -> Comuna -> Ciudad
+     * Esto se serializa automáticamente en el JSON como "ciudadNombre"
+     */
+    @Transient
+    @JsonProperty("ciudadNombre")
+    public String getCiudadNombre() {
+        if (villa != null && villa.getComuna() != null && villa.getComuna().getCiudad() != null) {
+            return villa.getComuna().getCiudad().getNombre();
+        }
+        return null;
+    }
+
 }
