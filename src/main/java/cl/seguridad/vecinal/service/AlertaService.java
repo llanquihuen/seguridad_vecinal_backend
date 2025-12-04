@@ -83,6 +83,17 @@ public class AlertaService {
         LocalDateTime hace24Horas = LocalDateTime.now().minusHours(24);
         return alertaRepository.findAlertasRecientes(hace24Horas);
     }
+    // Obtener alertas ultimo Mes
+    public List<Alerta> obtenerAlertasMes() {
+        LocalDateTime ultimoMes = LocalDateTime.now().minusDays(30);
+        return alertaRepository.findAlertasRecientes(ultimoMes);
+    }
+
+    // Obtener alertas últimos 2 meses (≈60 días)
+    public List<Alerta> obtenerAlertasDosMeses() {
+        LocalDateTime dosMeses = LocalDateTime.now().minusDays(60);
+        return alertaRepository.findAlertasRecientes(dosMeses);
+    }
 
     // Obtener alertas por usuario
     public Page<Alerta> obtenerAlertasPorUsuario(Integer usuarioId, Pageable pageable) {
