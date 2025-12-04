@@ -206,7 +206,7 @@ public class AlertaInformeController {
             generationConfig.put("temperature", 0.2);
             generationConfig.put("topK", 40);
             generationConfig.put("topP", 0.9);
-            generationConfig.put("maxOutputTokens", 600);
+            generationConfig.put("maxOutputTokens", 2500);
             aiRequest.put("generationConfig", generationConfig);
 
             Mono<String> respuestaMono = googleAiService.generarContenido(aiRequest);
