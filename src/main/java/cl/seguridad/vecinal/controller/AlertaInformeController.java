@@ -193,7 +193,7 @@ public class AlertaInformeController {
                     "- Tendencias y posibles causas.\n" +
                     "- Sectores/horas con anomalías y recomendaciones accionables.\n" +
                     "- Resumen ejecutivo (máx 8 viñetas) y 3 prioridades tácticas para la próxima semana.\n" +
-                    "Responde en minimo 350–400 palabras. Si falta información, indícalo. Si necesitas mas palabras solo agrega mas, no cortes las frases\n\n" +
+                    "Responde en minimo 350–400 palabras. El resultado dalo en formato markdown que se vea profesional, que sea facil de leer" +
                     objectMapper.writeValueAsString(aiData);
 
             // 7) Llamar a Gemini con configuración ajustada
