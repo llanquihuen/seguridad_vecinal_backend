@@ -8,9 +8,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -18,24 +22,31 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtTokenUtil jwtTokenUtil;
+    private final JwtTokenUtil jwtTokenUtil;
+    private final UserDetailsService userDetailsService;
+    private final UsuarioRepository usuarioRepository;
 
+    // Constructor injection es segura y recomendada; evita nulls y facilita testing
     @Autowired
-    private UserDetailsService userDetailsService;
-
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    public JwtAuthFilter(JwtTokenUtil jwtTokenUtil,
+                         UserDetailsService userDetailsService,
+                         UsuarioRepository usuarioRepository) {
+        this.jwtTokenUtil = jwtTokenUtil;
+        this.userDetailsService = userDetailsService;
+        this.usuarioRepository = usuarioRepository;
+    }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
         try {
@@ -47,37 +58,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (StringUtils.hasText(username)
                         && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    DatabaseAuthResult dbResult = authenticateUsingDatabase(jwt, username, request, response);
 
-                    if (jwtTokenUtil.validateToken(jwt, userDetails)) {
+                    if (dbResult == DatabaseAuthResult.FORBIDDEN) {
+                        return; // respuesta ya escrita
+                    }
 
-                        // ✅ VALIDACIÓN ADICIONAL: Verificar estadoCuenta
-                        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(username);
-
-                        if (usuarioOpt.isPresent()) {
-                            Usuario usuario = usuarioOpt.get();
-
-                            // Si el usuario NO es SUPER_ADMIN y tiene cuenta desactivada, bloquear
-                            if (!usuario.isEstadoCuenta() && usuario.getRole() != Role.SUPER_ADMIN) {
-                                logger.warn("⚠️ Intento de acceso con cuenta desactivada: " + username);
-                                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                                response.getWriter().write("{\"error\":\"Cuenta desactivada\",\"code\":\"ACCOUNT_DISABLED\"}");
-                                return;
-                            }
-                        }
-
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails,
-                                        null,
-                                        userDetails.getAuthorities()
-                                );
-
-                        authentication.setDetails(
-                                new WebAuthenticationDetailsSource().buildDetails(request)
-                        );
-
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    if (dbResult == DatabaseAuthResult.NOT_APPLICABLE) {
+                        authenticateFromClaims(jwt, username, request);
                     }
                 }
             }
@@ -96,11 +84,79 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return null;
     }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        String path = request.getRequestURI();
-        return path.startsWith("/api/auth/") ||
-                path.startsWith("/api/test/") ||
-                path.startsWith("/api/geografia/");
+    // ======================= Métodos auxiliares para reducir complejidad =======================
+
+    private enum DatabaseAuthResult { AUTHENTICATED, FORBIDDEN, NOT_APPLICABLE }
+
+    private DatabaseAuthResult authenticateUsingDatabase(String jwt,
+                                                         String username,
+                                                         HttpServletRequest request,
+                                                         HttpServletResponse response) {
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+            if (Boolean.FALSE.equals(jwtTokenUtil.validateToken(jwt, userDetails))) {
+                return DatabaseAuthResult.NOT_APPLICABLE;
+            }
+
+            // Verificación adicional: estado de cuenta salvo SUPER_ADMIN
+            Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(username);
+            if (usuarioOpt.isPresent() && isAccountAccessBlocked(usuarioOpt.get())) {
+                logger.warn("⚠️ Intento de acceso con cuenta desactivada: " + username);
+                writeForbiddenResponse(response);
+                return DatabaseAuthResult.FORBIDDEN;
+            }
+
+            authenticateWithUserDetails(userDetails, request);
+            return DatabaseAuthResult.AUTHENTICATED;
+
+        } catch (Exception ex) {
+            // No se pudo cargar desde BD (usuario aún no existe o error). Se intenta fallback por token.
+            logger.debug("Fallback a autenticación por claims del JWT para usuario: " + username, ex);
+            return DatabaseAuthResult.NOT_APPLICABLE;
+        }
+    }
+
+    private boolean isAccountAccessBlocked(Usuario usuario) {
+        return !usuario.isEstadoCuenta() && usuario.getRole() != Role.SUPER_ADMIN;
+    }
+
+    private void authenticateWithUserDetails(UserDetails userDetails, HttpServletRequest request) {
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void authenticateFromClaims(String jwt, String username, HttpServletRequest request) {
+        if (Boolean.FALSE.equals(jwtTokenUtil.validateToken(jwt))) {
+            return;
+        }
+
+        String role = jwtTokenUtil.getRoleFromToken(jwt);
+        List<GrantedAuthority> authorities = (role != null && !role.isBlank())
+                ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                : Collections.emptyList();
+
+        User principal = new User(username, "", true, true, true, true, authorities);
+
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        principal,
+                        null,
+                        authorities
+                );
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void writeForbiddenResponse(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"error\":\"" + "Cuenta desactivada" + "\",\"code\":\"" + "ACCOUNT_DISABLED" + "\"}");
     }
 }

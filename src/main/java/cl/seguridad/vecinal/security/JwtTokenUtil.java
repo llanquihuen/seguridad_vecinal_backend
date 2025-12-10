@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -21,10 +20,6 @@ public class JwtTokenUtil {
 
     @Value("${jwt.secret}")
     private String secret;
-
-    // Backward compatibility: legacy single expiration (used by generateToken)
-    @Value("${jwt.expiration:300}")
-    private long expiration;
 
     // New expirations for access and refresh tokens
     @Value("${jwt.access.expiration:300}")
@@ -40,6 +35,13 @@ public class JwtTokenUtil {
 
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
+    }
+
+    /**
+     * Obtiene el rol (claim "role") desde el JWT. Puede ser SUPER_ADMIN, ADMIN_VILLA, etc.
+     */
+    public String getRoleFromToken(String token) {
+        return getClaimFromToken(token, claims -> claims.get("role", String.class));
     }
 
     public String getJti(String token) {
@@ -64,14 +66,22 @@ public class JwtTokenUtil {
     }
 
     private Boolean isTokenExpired(String token) {
-        final Date expiration = getExpirationDateFromToken(token);
-        return expiration.before(new Date());
+        final Date expirationDate = getExpirationDateFromToken(token);
+        return expirationDate.before(new Date());
     }
 
-    // Legacy generator kept for compatibility
-    public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        return doGenerateToken(claims, userDetails.getUsername(), expiration);
+    /**
+     * Valida el token únicamente contra la firma y expiración, sin requerir un UserDetails.
+     * Útil como fallback cuando el usuario aún no existe en la base de datos pero el JWT es válido.
+     */
+    public Boolean validateToken(String token) {
+        try {
+            // getAllClaimsFromToken ya valida la firma con la clave HMAC configurada
+            getAllClaimsFromToken(token);
+            return !isTokenExpired(token);
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     public String generateAccessToken(String username, Map<String, Object> extraClaims) {
