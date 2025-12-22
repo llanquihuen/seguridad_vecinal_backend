@@ -1,5 +1,13 @@
 package cl.seguridad.vecinal.modelo;
 
+import lombok.Getter;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Getter
 public enum TipoAlertaEnum {
     EMERGENCIA("Emergencia", "Situación crítica que requiere atención inmediata"),
     ROBO("Robo", "Robo en progreso o reciente"),
@@ -19,11 +27,16 @@ public enum TipoAlertaEnum {
         this.descripcion = descripcion;
     }
 
-    public String getTitulo() {
-        return titulo;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
+    // Utilidad: convertir a lista de mapas simples para exponer por API
+    public static List<Map<String, String>> asListOfMaps() {
+        List<Map<String, String>> list = new ArrayList<>();
+        for (TipoAlertaEnum t : TipoAlertaEnum.values()) {
+            Map<String, String> map = new HashMap<>();
+            map.put("name", t.name());
+            map.put("titulo", t.getTitulo());
+            map.put("descripcion", t.getDescripcion());
+            list.add(map);
+        }
+        return list;
     }
 }

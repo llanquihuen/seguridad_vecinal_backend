@@ -8,6 +8,9 @@ import cl.seguridad.vecinal.modelo.EstadoAlerta;
 import cl.seguridad.vecinal.modelo.TipoAlertaEnum;
 import cl.seguridad.vecinal.modelo.Usuario;
 import cl.seguridad.vecinal.modelo.dto.AlertaCreateRequest;
+import cl.seguridad.vecinal.modelo.dto.DashboardStatsDto;
+import cl.seguridad.vecinal.modelo.Role;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,18 +18,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class AlertaService {
 
-    @Autowired
-    private AlertaRepository alertaRepository;
+    private final AlertaRepository alertaRepository;
+    private final UsuarioRepository usuarioRepository;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    public AlertaService(AlertaRepository alertaRepository, UsuarioRepository usuarioRepository) {
+        this.alertaRepository = alertaRepository;
+        this.usuarioRepository = usuarioRepository;
+    }
+
 
     // Crear nueva alerta
     public Alerta crearAlerta(AlertaCreateRequest request) {
@@ -56,7 +66,7 @@ public class AlertaService {
         alerta.setSector(usuario.getSector());          // ← Del usuario en BD
         alerta.setComuna(usuario.getComunaNombre());    // ← "San Bernardo"
         alerta.setCiudad(usuario.getCiudadNombre());    // ← "Santiago"
-        alerta.setSilenciosa(request.getSilenciosa() != null ? request.getSilenciosa() : false);
+        alerta.setSilenciosa(Boolean.TRUE.equals(request.getSilenciosa()));
         alerta.setEstado(EstadoAlerta.ACTIVA);
         alerta.setFechaHora(LocalDateTime.now());
 
@@ -122,7 +132,7 @@ public class AlertaService {
 
         alerta.setEstado(nuevoEstado);
 
-        if (nuevoEstado == EstadoAlerta.ATENDIDA || nuevoEstado == EstadoAlerta.ATENDIDA) {
+        if (EstadoAlerta.ATENDIDA.equals(nuevoEstado)) {
             alerta.setAtendidaPor(adminId);
             alerta.setFechaAtencion(LocalDateTime.now());
             if (notas != null) {
@@ -152,7 +162,7 @@ public class AlertaService {
     // Eliminar alerta (soft delete o real delete según necesites)
     public void eliminarAlerta(Integer alertaId) {
         if (!alertaRepository.existsById(alertaId)) {
-            throw new RuntimeException("Alerta no encontrada");
+            throw new EntityNotFoundException("Alerta no encontrada");
         }
         alertaRepository.deleteById(alertaId);
     }
@@ -199,6 +209,89 @@ public class AlertaService {
      */
     public List<Alerta> findTop5RecentAlertas() {
         return alertaRepository.findTop5ByOrderByFechaHoraDesc();
+    }
+
+    // ===================== DASHBOARD STATS (EXTRAÍDO DEL CONTROLADOR) =====================
+    public DashboardStatsDto obtenerDashboardStats(Long villaId,
+                                                   String sector,
+                                                   String fechaInicio,
+                                                   String fechaFin,
+                                                   String emailUsuario) {
+        // Obtener usuario y rol
+        Usuario currentUser = usuarioRepository.findByEmail(emailUsuario)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado"));
+
+        // Determinar villa objetivo
+        Long targetVillaId = null;
+        if (currentUser.getRole() == Role.ADMIN_VILLA) {
+            targetVillaId = currentUser.getVillaId();
+        } else if (currentUser.getRole() == Role.SUPER_ADMIN) {
+            targetVillaId = villaId;
+        }
+
+        // Fechas por defecto
+        LocalDateTime startDate = fechaInicio != null ? LocalDateTime.parse(fechaInicio + "T00:00:00") : LocalDateTime.now().minusMonths(1);
+        LocalDateTime endDate = fechaFin != null ? LocalDateTime.parse(fechaFin + "T23:59:59") : LocalDateTime.now();
+
+        // Obtener alertas filtradas
+        List<cl.seguridad.vecinal.modelo.Alerta> alertas;
+        if (targetVillaId != null && sector != null) {
+            alertas = alertaRepository.findByVillaIdAndSectorAndFechaHoraBetween(targetVillaId, sector, startDate, endDate);
+        } else if (targetVillaId != null) {
+            alertas = alertaRepository.findByVillaIdAndFechaHoraBetween(targetVillaId, startDate, endDate);
+        } else if (sector != null) {
+            alertas = alertaRepository.findBySectorAndFechaHoraBetween(sector, startDate, endDate);
+        } else {
+            alertas = alertaRepository.findByFechaHoraBetween(startDate, endDate);
+        }
+
+        DashboardStatsDto dto = new DashboardStatsDto();
+        dto.setTotalAlertas(alertas.size());
+
+        // Por tipo
+        Map<String, Long> porTipo = alertas.stream()
+                .collect(Collectors.groupingBy(a -> a.getTipo().name(), Collectors.counting()));
+        dto.setAlertasPorTipo(porTipo);
+
+        // Por estado
+        Map<String, Long> porEstado = alertas.stream()
+                .collect(Collectors.groupingBy(a -> a.getEstado().name(), Collectors.counting()));
+        dto.setAlertasPorEstado(porEstado);
+
+        // Por día (últimos 7 días)
+        Map<String, Long> porDia = alertas.stream()
+                .filter(a -> a.getFechaHora() != null && a.getFechaHora().isAfter(LocalDateTime.now().minusDays(7)))
+                .collect(Collectors.groupingBy(a -> a.getFechaHora().toLocalDate().toString(), Collectors.counting()));
+        dto.setAlertasPorDia(porDia);
+
+        // Top sectores
+        Map<String, Long> porSector = alertas.stream()
+                .filter(a -> a.getSector() != null)
+                .collect(Collectors.groupingBy(cl.seguridad.vecinal.modelo.Alerta::getSector, Collectors.counting()));
+        List<Map<String, Object>> topSectores = porSector.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(5)
+                .map(entry -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("sector", entry.getKey());
+                    item.put("cantidad", entry.getValue());
+                    return item;
+                })
+                .toList();
+        dto.setTopSectores(topSectores);
+
+        // Por hora
+        Map<Integer, Long> porHora = alertas.stream()
+                .filter(a -> a.getFechaHora() != null)
+                .collect(Collectors.groupingBy(a -> a.getFechaHora().getHour(), Collectors.counting()));
+        dto.setAlertasPorHora(porHora);
+
+        // Porcentaje silenciosas
+        long silenciosas = alertas.stream().filter(Alerta::getSilenciosa).count();
+        double porcentajeSilenciosas = alertas.isEmpty() ? 0 : (silenciosas * 100.0) / alertas.size();
+        dto.setPorcentajeSilenciosas(Math.round(porcentajeSilenciosas * 100.0) / 100.0);
+
+        return dto;
     }
 
 }
