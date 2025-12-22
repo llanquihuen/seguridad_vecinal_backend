@@ -239,13 +239,15 @@ public class AlertaInformeController {
         anom.put("sectoresZscore", agregados.sectoresZ());
         aiData.put("anomalias", anom);
 
-        aiData.put("muestra", muestra.stream().limit(20).map(a -> Map.of(
-                "fecha", a.getFechaHora() == null ? null : a.getFechaHora().toString(),
-                "tipo", a.getTipo() == null ? null : a.getTipo().name(),
-                KEY_ESTADO, a.getEstado() == null ? null : a.getEstado().name(),
-                KEY_SECTOR, sectorVillaComuna(a),
-                "detalle", Optional.ofNullable(a.getDescripcion()).orElse("")
-        )).toList());
+        aiData.put("muestra", muestra.stream().limit(20).map(a -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("fecha", a.getFechaHora() != null ? a.getFechaHora().toString() : "N/A");
+            item.put("tipo", a.getTipo() != null ? a.getTipo().name() : "DESCONOCIDO");
+            item.put(KEY_ESTADO, a.getEstado() != null ? a.getEstado().name() : "DESCONOCIDO");
+            item.put(KEY_SECTOR, sectorVillaComuna(a));
+            item.put("detalle", Optional.ofNullable(a.getDescripcion()).orElse(""));
+            return item;
+        }).toList());
 
         return aiData;
     }
@@ -360,9 +362,9 @@ public class AlertaInformeController {
         try {
             JsonNode root = objectMapper.readTree(rawJson);
             JsonNode candidates = root.path("candidates");
-            if (candidates.isArray() && candidates.size() > 0) {
+            if (candidates.isArray() && !candidates.isEmpty()) {
                 JsonNode parts = candidates.get(0).path("content").path("parts");
-                if (parts.isArray() && parts.size() > 0) {
+                if (parts.isArray() && !parts.isEmpty()) {
                     JsonNode text = parts.get(0).path("text");
                     if (!text.isMissingNode()) return text.asText();
                 }
@@ -421,16 +423,16 @@ public class AlertaInformeController {
 
     // ==== Utilidades de agregación compacta ====
     private String diaCorto(DayOfWeek dow) {
-        switch (dow) {
-            case MONDAY: return "L";
-            case TUESDAY: return "M";
-            case WEDNESDAY: return "X";
-            case THURSDAY: return "J";
-            case FRIDAY: return "V";
-            case SATURDAY: return "S";
-            case SUNDAY: return "D";
-            default: return dow.name();
-        }
+        return switch (dow) {
+            case MONDAY -> "L";
+            case TUESDAY -> "M";
+            case WEDNESDAY -> "X";
+            case THURSDAY -> "J";
+            case FRIDAY -> "V";
+            case SATURDAY -> "S";
+            case SUNDAY -> "D";
+            default -> dow.name();
+        };
     }
 
     private double calcularMediana(List<Long> valores) {
