@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
-@Controller
 public class AuthController {
 
     @Autowired
@@ -29,8 +28,9 @@ public class AuthController {
     @Autowired
     private GoogleAuthService googleAuthService;
 
+    /* @return ResponseEntity containing either AuthResponse on success or ErrorResponse on failure */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest req) {
+    public ResponseEntity<ApiResponse> login(@RequestBody LoginRequest loginRequest, HttpServletRequest req) {
         try {
             AuthResponse authResponse = authService.authenticate(loginRequest, req);
             return ResponseEntity.ok(authResponse);
@@ -57,7 +57,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@RequestBody RefreshRequest request, HttpServletRequest httpReq) {
+    public ResponseEntity<ApiResponse> refresh(@RequestBody RefreshRequest request, HttpServletRequest httpReq) {
         var pair = refreshTokenService.rotate(request.getRefreshToken(), httpReq.getHeader("User-Agent"), httpReq.getRemoteAddr());
         return ResponseEntity.ok(new AuthResponse(pair.accessToken(), pair.refreshToken(), pair.username(), pair.role(), pair.isAdmin()));
     }
@@ -69,7 +69,7 @@ public class AuthController {
     }
 
     @PostMapping("/google")
-    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest body, HttpServletRequest httpReq) {
+    public ResponseEntity<ApiResponse> loginWithGoogle(@RequestBody GoogleLoginRequest body, HttpServletRequest httpReq) {
         try {
             Usuario user = googleAuthService.verifyOrCreateUser(body.getIdToken());
             var pair = refreshTokenService.issuePair(user, httpReq.getHeader("User-Agent"), httpReq.getRemoteAddr());

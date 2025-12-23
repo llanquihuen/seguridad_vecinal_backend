@@ -1,6 +1,6 @@
 package cl.seguridad.vecinal.modelo.dto;
 
-public class AuthResponse {
+public final class AuthResponse implements ApiResponse {
     private String accessToken;
     private String refreshToken;
     private String email;           // Campo principal
