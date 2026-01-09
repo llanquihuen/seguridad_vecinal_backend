@@ -3,9 +3,18 @@ package cl.seguridad.vecinal.modelo.dto;
 import cl.seguridad.vecinal.modelo.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@Setter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserUpdateRequest {
 
+    // Getters y Setters
     @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
     private String nombre;
 
@@ -28,117 +37,6 @@ public class UserUpdateRequest {
     private Float longitud;
     private Role role;
     private String sector;
-
-    // ✅ NUEVO: Soporte para actualizar villa
     private Long villaId;
 
-    // Constructor vacío
-    public UserUpdateRequest() {}
-
-    // Constructor completo
-    public UserUpdateRequest(String nombre, String apellido, String email, String rut,
-                             String password, String direccion, Float latitud, Float longitud,
-                             Role role, String sector, Long villaId) {
-        this.nombre = nombre;
-        this.apellido = apellido;
-        this.email = email;
-        this.rut = rut;
-        this.password = password;
-        this.direccion = direccion;
-        this.latitud = latitud;
-        this.longitud = longitud;
-        this.role = role;
-        this.sector = sector;
-        this.villaId = villaId;
-    }
-
-    // Getters y Setters
-    public String getNombre() {
-        return nombre;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public String getApellido() {
-        return apellido;
-    }
-
-    public void setApellido(String apellido) {
-        this.apellido = apellido;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getRut() {
-        return rut;
-    }
-
-    public void setRut(String rut) {
-        this.rut = rut;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getDireccion() {
-        return direccion;
-    }
-
-    public void setDireccion(String direccion) {
-        this.direccion = direccion;
-    }
-
-    public Float getLatitud() {
-        return latitud;
-    }
-
-    public void setLatitud(Float latitud) {
-        this.latitud = latitud;
-    }
-
-    public Float getLongitud() {
-        return longitud;
-    }
-
-    public void setLongitud(Float longitud) {
-        this.longitud = longitud;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public String getSector() {
-        return sector;
-    }
-
-    public void setSector(String sector) {
-        this.sector = sector;
-    }
-
-    // ✅ NUEVO: Getter y Setter para villaId
-    public Long getVillaId() {
-        return villaId;
-    }
-
-    public void setVillaId(Long villaId) {
-        this.villaId = villaId;
-    }
 }

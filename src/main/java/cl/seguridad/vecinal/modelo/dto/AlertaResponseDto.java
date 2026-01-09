@@ -1,9 +1,9 @@
-// src/main/java/cl/seguridad/vecinal/modelo/dto/AlertaResponseDto.java
 package cl.seguridad.vecinal.modelo.dto;
 
 import cl.seguridad.vecinal.modelo.Alerta;
 import cl.seguridad.vecinal.modelo.EstadoAlerta;
 import cl.seguridad.vecinal.modelo.TipoAlertaEnum;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,30 +15,37 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AlertaResponseDto {
+    @NotNull
     private Integer alertaId;
+    @NotNull
     private Integer usuarioId;
     private String nombreUsuario;
     private String apellidoUsuario;
+    @NotNull
     private TipoAlertaEnum tipo;
     private String tipoTitulo;
     private String tipoDescripcion;
     private String descripcion;
+    @NotNull
     private Double latitud;
+    @NotNull
     private Double longitud;
     private String direccion;
     private String sector;
     private String comuna;
     private String ciudad;
     private String villaNombre;
+    @NotNull
     private EstadoAlerta estado;
+    @NotNull
     private Boolean silenciosa;
+    @NotNull
     private LocalDateTime fechaHora;
     private Integer atendidaPor;
     private LocalDateTime fechaAtencion;
     private String notasAtencion;
 
-
-    // ✅ CONSTRUCTOR DESDE ENTIDAD ALERTA (AGREGAR ESTE)
+    // CONSTRUCTOR DE ENTIDAD ALERTA
     public AlertaResponseDto(Alerta alerta) {
         this.alertaId = alerta.getId();
         this.usuarioId = alerta.getUsuario().getUsuarioId();
@@ -53,7 +60,6 @@ public class AlertaResponseDto {
         this.direccion = alerta.getDireccion();
         this.sector = alerta.getSector();
 
-        // ✅ CAMBIO CRÍTICO: Obtener comuna y ciudad desde Usuario si no existen
         this.comuna = alerta.getComuna() != null
                 ? alerta.getComuna()
                 : alerta.getUsuario().getComunaNombre();
@@ -62,9 +68,7 @@ public class AlertaResponseDto {
                 ? alerta.getCiudad()
                 : alerta.getUsuario().getCiudadNombre();
 
-        // ✅ NUEVO: Obtener nombre de villa desde Usuario
         this.villaNombre = alerta.getUsuario().getVillaNombre();
-
         this.estado = alerta.getEstado();
         this.silenciosa = alerta.getSilenciosa();
         this.fechaHora = alerta.getFechaHora();
